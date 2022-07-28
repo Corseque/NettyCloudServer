@@ -1,0 +1,133 @@
+Opera Hotlist version 2.0
+Options: encoding = utf8, version=3
+
+#SEPERATOR
+	ID=14
+	UNIQUEID=8018C4F077A15B44BEC4C014F232540A
+
+#FOLDER
+	ID=15
+	NAME=Корзина
+	CREATED=1359285786
+	TRASH FOLDER=YES
+	DELETABLE=NO
+	UNIQUEID=14C645A5B8A3470FB3B52CC32C97E2B8
+
+#URL
+	ID=16
+	NAME=Bing
+	URL=http://go.microsoft.com/fwlink/p/?LinkId=255142
+	CREATED=1386260227
+	UNIQUEID=C3A2DF64993E4B4FB138439A9FF346AE
+
+-
+
+#FOLDER
+	ID=17
+	NAME=Ком.платежи
+	CREATED=1386944652
+	ACTIVE=YES
+	UNIQUEID=CF5004DC0B3B084293B4559F4FB24209
+
+#URL
+	ID=18
+	NAME=МГТС - Личный кабинет - Главная страница
+	URL=https://lk-t1.mgts.ru/
+	CREATED=1386944656
+	VISITED=1389282104
+	UNIQUEID=4D72AA1E1205A74686B0B40D40EDB483
+
+#URL
+	ID=19
+	NAME=Личный кабинет клиента ОАО «Мосэнергосбыт»
+	URL=https://lkkbyt.mosenergosbyt.ru/abonent/index.xhtml
+	CREATED=1386944833
+	VISITED=1389282034
+	UNIQUEID=3DB02F047BF1E846A59EA0C91E8167D2
+
+#URL
+	ID=20
+	NAME=Оплата услуг / Портал госуслуг Москвы
+	URL=https://pgu.mos.ru/ru/payment/?PAYMENT_RCPT=EPD
+	CREATED=1386946652
+	VISITED=1389560129
+	UNIQUEID=8CCDC1693971BF4DB61710E6A6D2D932
+
+#URL
+	ID=21
+	NAME=Единый личный кабинет
+	URL=https://my.mos.ru/my/
+	CREATED=1386946680
+	VISITED=1389281543
+	UNIQUEID=FBA6761718B1B14EBB096ECACE217A3C
+
+-
+
+#FOLDER
+	ID=22
+	NAME=Anime
+	CREATED=1389113581
+	UNIQUEID=2BCE72EFD2C5D84981A24F569D45CC16
+
+#URL
+	ID=23
+	NAME=Скачать аниме, мангу, хентай, наруто, блич. Слушать аниме радио. Аниме форум, чат, трекер.
+	URL=http://www.animelayer.ru/
+	CREATED=1389113582
+	VISITED=1389258636
+	DESCRIPTION=anime, manga, hentai на Anime Layer
+	UNIQUEID=B7F08DE1CD8A58459B3417C81E2431AC
+
+-
+
+#FOLDER
+	ID=24
+	NAME=Финансы
+	CREATED=1389278219
+	UNIQUEID=A51E409810C1DD40B4D70944ADBC7AA9
+
+#URL
+	ID=25
+	NAME=Easyfinance
+	URL=https://easyfinance.ru/info
+	CREATED=1389278227
+	DESCRIPTION=C нашей помощью Вы сможете структурировать свои доходы и расходы, вести домашнюю бухгалтерию и семейный бюджет.
+	UNIQUEID=7A88AC97C1371A45A776FEE2DA960F52
+
+-
+
+#DELETED
+	PARTNERID=opera-booking3
+	PARTNERID=opera-gamesportal3
+	PARTNERID=opera-booking
+	PARTNERID=opera-auction
+	PARTNERID=opera-social
+	PARTNERID=opera-downloadsite3
+	PARTNERID=opera-operastart
+	PARTNERID=opera-discount
+	PARTNERID=opera-booking2
+	PARTNERID=opera-portal
+	PARTNERID=opera-mail2
+	PARTNERID=opera-operaportal
+	PARTNERID=opera-webshop
+	PARTNERID=opera-clothing
+	PARTNERID=opera-travel
+	PARTNERID=opera-downloadsite2
+	PARTNERID=opera-sportsnews
+	PARTNERID=opera-encyclopedia
+	PARTNERID=opera-cars
+	PARTNERID=opera-downloadsite
+	PARTNERID=opera-webshop2
+	PARTNERID=opera-onlinedating
+	PARTNERID=opera-gamesportal2
+	PARTNERID=opera-travel2
+	PARTNERID=opera-gamesportal
+	PARTNERID=opera-videostreaming
+	PARTNERID=opera-cars2
+	PARTNERID=opera-travel3
+	PARTNERID=opera-portal2
+	PARTNERID=opera-operaextensions
+	PARTNERID=opera-operasupport
+	PARTNERID=opera-operasocial
+	PARTNERID=opera-webshop3
+	PARTNERID=opera-searchengine
