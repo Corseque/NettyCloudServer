@@ -4,11 +4,14 @@ import io.netty.handler.codec.serialization.ObjectDecoderInputStream;
 import io.netty.handler.codec.serialization.ObjectEncoderOutputStream;
 import javafx.application.Platform;
 import javafx.fxml.FXML;
+import javafx.fxml.FXMLLoader;
 import javafx.fxml.Initializable;
+import javafx.scene.Parent;
+import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.control.Button;
 import javafx.scene.control.TextField;
-import javafx.scene.input.KeyCode;
+import javafx.stage.Stage;
 import lombok.extern.slf4j.Slf4j;
 import model.*;
 
@@ -18,10 +21,11 @@ import java.net.Socket;
 import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.List;
 import java.util.ResourceBundle;
 
 @Slf4j
-public class ClientNetty implements Initializable {
+public class ClientNetty implements Initializable, Callback {
 
     //login form
     public TextField login;
@@ -56,6 +60,11 @@ public class ClientNetty implements Initializable {
     private Path clientDir;
     private ObjectDecoderInputStream is;
     private ObjectEncoderOutputStream os;
+
+//    public ClientNetty(ProcessorRegistry processorRegistry) {
+//        this.processorRegistry = processorRegistry;
+//    }
+
     private ProcessorRegistry processorRegistry;
 
     // read from network
@@ -71,7 +80,16 @@ public class ClientNetty implements Initializable {
         }
     }
 
-    private void updateClientView() {
+    @Override
+    public void updateFilesList(List<String> list) {
+        Platform.runLater(() -> {
+            serverView.getItems().clear();
+            serverView.getItems().addAll(list);
+        });
+    }
+
+    @Override
+    public void updateClientView() {
         try {
             clientView.getItems().clear();
             Files.list(clientDir)
@@ -83,18 +101,42 @@ public class ClientNetty implements Initializable {
     }
 
     @Override
+    public void setServerPath(String svrPath) {
+        Platform.runLater(() -> serverPath.setText(svrPath));
+    }
+
+    @Override
+    public Path getClientDir() {
+        return clientDir;
+    }
+
+    @Override
     public void initialize(URL location, ResourceBundle resources) {
+//        initLoginForm();
+
         initClient();
     }
 
 
     private void initLoginForm() {
-        //todo сюда нужно перенести открытие порта
+        //todo сюда нужно перенести открытие порта и потоков
         initLoginFormButtonsListeners();
     }
 
     private void initLoginFormButtonsListeners() {
         loginBtn.setOnAction(e -> {
+            //временная заглушка начало
+            loginBtn.getScene().getWindow().hide();
+            try {
+                Parent parent = FXMLLoader.load(getClass().getResource("client-view.fxml"));
+                Stage stage = new Stage();
+                stage.setScene(new Scene(parent));
+                stage.show();
+                initClient();
+            } catch (IOException ex) {
+                ex.printStackTrace();
+            }
+            //временная заглушка конец
             try {
                 os.writeObject(new LoginMessage(login.getText(), password.getText()));
                 os.flush();
@@ -102,22 +144,38 @@ public class ClientNetty implements Initializable {
                 ex.printStackTrace();
             }
         });
+        registerBtn.setOnAction(e -> {
+            registerBtn.getScene().getWindow().hide();
+            try {
+                Parent parent = FXMLLoader.load(getClass().getResource("register-view.fxml"));
+                Stage stage = new Stage();
+                stage.setScene(new Scene(parent));
+                stage.show();
+            } catch (IOException ex) {
+                ex.printStackTrace();
+            }
+            //todo скрыть форму логина, открыть форму регистрации
+        });
     }
 
 
     private void initClient() {
         try {
+            processorRegistry = new ProcessorRegistry(
+                    //clientDir, clientView, serverView, serverPath
+                    );
+            processorRegistry.registerCallback(ClientNetty.this);
+            Socket socket = new Socket("localhost", 8189);
+            System.out.println("Network created...");
+            os = new ObjectEncoderOutputStream(socket.getOutputStream());
+            is = new ObjectDecoderInputStream(socket.getInputStream());
+
             clientDir = Path.of("D:\\");
             //Paths.of(System.getProperty("user.home"));
             clientPath.setText(clientDir.toString());
             updateClientView();
             initClientMouseListeners();
             initClientButtonsListeners();
-            processorRegistry = new ProcessorRegistry(clientDir, clientView, serverView, serverPath);
-            Socket socket = new Socket("localhost", 8189);
-            System.out.println("Network created...");
-            os = new ObjectEncoderOutputStream(socket.getOutputStream());
-            is = new ObjectDecoderInputStream(socket.getInputStream());
             Thread readThread = new Thread(this::readLoop);
             readThread.setDaemon(true);
             readThread.start();
@@ -152,8 +210,8 @@ public class ClientNetty implements Initializable {
                 Path path = clientDir.resolve(getItem());
                 if (Files.isDirectory(path)) {
                     clientDir = path;
-                    processorRegistry.setClientDir(clientDir);
-                    Platform.runLater(this::updateClientView);
+//                    processorRegistry.setClientDir(clientDir);
+                    Platform.runLater(() -> updateClientView());
                     clientPath.setText(clientDir.toString());
                 } else {
                     Desktop desktop = Desktop.getDesktop();
@@ -196,7 +254,7 @@ public class ClientNetty implements Initializable {
             Path pathUp = Path.of(clientPath.getText()).getParent();
             if (Files.exists(pathUp)) {
                 clientDir = pathUp;
-                processorRegistry.setClientDir(clientDir);
+//                processorRegistry.setClientDir(clientDir);
                 Platform.runLater(() -> updateClientView());
                 clientPath.setText(clientDir.toString());
             }
@@ -220,7 +278,7 @@ public class ClientNetty implements Initializable {
         downloadBtn.setOnMouseClicked(e -> {
             try {
                 String currentDir = serverPath.getText();
-                String fileName =  serverView.getSelectionModel().getSelectedItem();
+                String fileName = serverView.getSelectionModel().getSelectedItem();
                 Path path = Path.of(currentDir).resolve(Path.of(fileName));
                 if (!Files.isDirectory(path)) {
                     os.writeObject(new DownloadFileMessage(path));
@@ -238,8 +296,7 @@ public class ClientNetty implements Initializable {
         return clientView.getSelectionModel().getSelectedItem();
     }
 
-    
-    
+
     private void initRegisterForm() {
         userMale.setToggleGroup(genderGroup);
         userFemale.setToggleGroup(genderGroup);
@@ -270,7 +327,7 @@ public class ClientNetty implements Initializable {
                     String gender = userMale.isSelected() ? "male" : "female";
                     try {
                         os.writeObject(new NewUserMessage(userName.getText(), userSurname.getText(),
-                                gender, userBirthDate.toString(),userPhoneNum.getText(),
+                                gender, userBirthDate.toString(), userPhoneNum.getText(),
                                 userEmail.getText(), userLogin.getText(), userPassword.getText()));
                         os.flush();
                     } catch (IOException ex) {

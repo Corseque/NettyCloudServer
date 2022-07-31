@@ -10,7 +10,7 @@ import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
 
 public class BaseNettyServer {
-    private AuthService authService;
+    private CloudServer authService;
 
     public BaseNettyServer(ChannelHandler ... handlers) {
         EventLoopGroup auth = new NioEventLoopGroup(1);
@@ -21,13 +21,13 @@ public class BaseNettyServer {
                     .channel(NioServerSocketChannel.class)
                     .childHandler(new ChannelInitializer<SocketChannel>() {
                         @Override
-                        protected void initChannel(SocketChannel socketChannel) throws Exception {
+                        protected void initChannel(SocketChannel socketChannel) {
                             socketChannel.pipeline().addLast(handlers);
                         }
                     });
             ChannelFuture future = bootstrap.bind(8189).sync();
-            authService = new MySQLAuthService();
-            authService.start();
+//            authService = new MySQLAuthService();
+//            authService.start();
             // server started!
             future.channel().closeFuture().sync(); // block
         } catch (InterruptedException e) {
