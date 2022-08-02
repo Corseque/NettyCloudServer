@@ -8,7 +8,7 @@
 <?import javafx.scene.text.Font?>
 
 <Pane maxHeight="-Infinity" maxWidth="-Infinity" minHeight="-Infinity" minWidth="-Infinity" prefHeight="230.0" prefWidth="460.0"
-      xmlns="http://javafx.com/javafx/18" xmlns:fx="http://javafx.com/fxml/1" fx:controller="client.ClientNetty" >
+      xmlns="http://javafx.com/javafx/18" xmlns:fx="http://javafx.com/fxml/1" fx:controller="client.LoginForm" >
    <children>
       <Label alignment="CENTER" layoutX="12.0" layoutY="33.0" prefHeight="20.0" prefWidth="429.0" text="Enter your username and password or register on cloud storage">
          <font>

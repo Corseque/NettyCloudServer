@@ -16,20 +16,24 @@ public class CloudServerHandler extends SimpleChannelInboundHandler<CloudMessage
     private final Path rootDir = Path.of("C:/Users/Corse/IdeaProjects/NettyCloudServer/data");
     private Path currentDir;
     private final CloudServer server;
+   // ChannelHandlerContext ctx;
 
     public CloudServerHandler(CloudServer server) {
         this.server = server;
     }
 
-    public void channelActive(ChannelHandlerContext ctx) throws IOException {
+    public void channelActive(ChannelHandlerContext ctx) {
         currentDir = rootDir;
-        sendList(ctx, currentDir);
     }
 
     @Override
     protected void channelRead0(ChannelHandlerContext ctx, CloudMessage cloudMessage) throws Exception {
+        //this.ctx = ctx;
         log.info("Get message on server: " + cloudMessage.getType().toString());
         switch (cloudMessage.getType()) {
+            case FILES_LIST:
+                sendList(ctx, currentDir);
+                break;
             case DOWNLOAD_FILE:
                 processDownloadFileMessage((DownloadFileMessage) cloudMessage, ctx);
                 break;
@@ -44,8 +48,15 @@ public class CloudServerHandler extends SimpleChannelInboundHandler<CloudMessage
                 processNewUserMessage((NewUserMessage) cloudMessage, ctx);
                 break;
             case LOGIN:
-                //todo написать обработчик
+                processLoginMessage((LoginMessage) cloudMessage, ctx);
+                break;
         }
+    }
+
+    private void processLoginMessage(LoginMessage cloudMessage, ChannelHandlerContext ctx) {
+        ctx.writeAndFlush(new LoginMessage(cloudMessage, true, rootDir.toString()));
+
+        //todo написать обработчик через проверку пользователя в БД
     }
 
     private void processNewUserMessage(NewUserMessage cloudMessage, ChannelHandlerContext ctx) {
