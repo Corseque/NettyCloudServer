@@ -18,42 +18,51 @@ import java.util.Map;
 @Slf4j
 public class ProcessorRegistry {
 
-    private Map<CommandType, MessageProcessor> map;
-    private Path clientDir;
-    public ListView<String> clientView;
-    public ListView<String> serverView;
-    public TextField serverPath;
+    private Callback callback;
 
-    public ProcessorRegistry(Path clientDir, ListView<String> clientView, ListView<String> serverView, TextField serverPath) {
-        this.clientDir = clientDir;
-        this.clientView = clientView;
-        this.serverView = serverView;
-        this.serverPath = serverPath;
+    public void registerCallback(Callback callback) {
+        this.callback = callback;
+    }
+
+    private final Map<CommandType, MessageProcessor> map;
+//    private Path clientDir;
+//    public ListView<String> clientView;
+//    public ListView<String> serverView;
+//    public TextField serverPath;
+
+    public ProcessorRegistry(
+//            Path clientDir, ListView<String> clientView, ListView<String> serverView, TextField serverPath
+    ) {
+//        this.clientDir = clientDir;
+//        this.clientView = clientView;
+//        this.serverView = serverView;
+//        this.serverPath = serverPath;
         map = new HashMap<>();
 
         map.put(CommandType.FILES_LIST, msg -> {
             FilesListMessage message = (FilesListMessage) msg;
-            Platform.runLater(() -> {
-                serverView.getItems().clear();
-                serverView.getItems().addAll(message.getFiles());
-            });
+            callback.updateFilesList(message.getFiles());
+////            Platform.runLater(() -> {
+////                serverView.getItems().clear();
+////                serverView.getItems().addAll(message.getFiles());
+////            });
         });
         map.put(CommandType.UPLOAD_FILE, msg -> {
             UploadFileMessage message = (UploadFileMessage) msg;
-
         });
 //        map.put(CommandType.UPLOAD_FILES, msg -> {});
         map.put(CommandType.DOWNLOAD_FILE, msg -> {
             DownloadFileMessage message = (DownloadFileMessage) msg;
-            Path path = getClientDir().resolve(message.getFileName());
+            Path path = callback.getClientDir().resolve(message.getFileName());
             Files.write(path, message.getBytes());
-            Platform.runLater(() -> updateClientView());
+            Platform.runLater(() -> callback.updateClientView());
 
         });
 //        map.put(CommandType.DOWNLOAD_FILES, msg -> {});
         map.put(CommandType.SERVER_DIR, msg -> {
             ServerDirMessage message = (ServerDirMessage) msg;
-            serverPath.setText(message.getCurrentDir());
+            callback.setServerPath(message.getCurrentDir());
+////            serverPath.setText(message.getCurrentDir());
         });
 //        map.put(CommandType.OPEN_SERVER_FILE, msg -> {});
 //        map.put(CommandType.RENAME_SERVER_DIR, msg -> {});
@@ -67,10 +76,21 @@ public class ProcessorRegistry {
 //        map.put(CommandType.SHARE_SERVER_DIR, msg -> {});
 //        map.put(CommandType.SHARE_SERVER_FILE, msg -> {});
         map.put(CommandType.NEW_USER, msg -> {
-            if (((NewUserMessage) msg).isUserAlreadyExists()) {
+            NewUserMessage message = (NewUserMessage) msg;
+            if (message.isUserAlreadyExists()) {
                 //todo вернуть на форму регистрации и подсветить поля, для изменения
+                if (message.isLoginBusy() && message.isEmailBusy()) {
+
+                } else {
+                    if (message.isLoginBusy()) {
+
+                    }
+                    if (message.isEmailBusy()) {
+
+                    }
+                }
             } else {
-                //todo переход на форму входа с предзаполненым логином
+                //todo скрыть форму регистрации, открыть форму логина (?->) с предзаполненым логином
             }
         });
         map.put(CommandType.LOGIN, msg -> {
@@ -87,23 +107,23 @@ public class ProcessorRegistry {
         log.info("Get message on client: " + msg.getType().toString());
     }
 
-    public void setClientDir(Path clientDir) {
-        this.clientDir = clientDir;
-    }
+//    public void setClientDir(Path clientDir) {
+//        this.clientDir = clientDir;
+//    }
 
-    public Path getClientDir() {
-        return clientDir;
-    }
+//    public Path getClientDir() {
+//        return clientDir;
+//    }
 
-    private void updateClientView() {
-        try {
-            clientView.getItems().clear();
-            Files.list(clientDir)
-                    .map(p -> p.getFileName().toString())
-                    .forEach(f -> clientView.getItems().add(f));
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-    }
+//    private void updateClientView() {
+//        try {
+//            clientView.getItems().clear();
+//            Files.list(clientDir)
+//                    .map(p -> p.getFileName().toString())
+//                    .forEach(f -> clientView.getItems().add(f));
+//        } catch (IOException e) {
+//            e.printStackTrace();
+//        }
+//    }
 
 }

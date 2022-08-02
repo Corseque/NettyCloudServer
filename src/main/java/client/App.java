@@ -13,6 +13,7 @@ public class App extends Application {
     @Override
     public void start(Stage stage) throws IOException {
         Parent parent = FXMLLoader.load(getClass().getResource("client-view.fxml"));
+//        Parent parent = FXMLLoader.load(getClass().getResource("login-view.fxml"));
         stage.setScene(new Scene(parent));
         stage.show();
     }

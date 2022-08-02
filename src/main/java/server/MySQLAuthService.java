@@ -1,20 +1,20 @@
 package server;
 
 import lombok.extern.slf4j.Slf4j;
+import model.NewUserMessage;
 
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
 import java.sql.Statement;
-import java.util.Optional;
 
 @Slf4j
-public class MySQLAuthService implements AuthService {
+public class MySQLAuthService {
 
     private static Connection connection;
     private static Statement statement;
 
-    @Override
+
     public void start() {
         try {
             connect();
@@ -28,6 +28,7 @@ public class MySQLAuthService implements AuthService {
     }
 
     private void connect() throws SQLException {
+        log.info("Auth server started...");
         connection =  DriverManager.getConnection("jdbc:mysql://localhost:3306/","root", "root");
         log.info("Connected to MySQL...");
         statement = connection.createStatement();
@@ -36,7 +37,7 @@ public class MySQLAuthService implements AuthService {
 
     private void createDatabase() throws SQLException {
         statement.executeUpdate("CREATE DATABASE IF NOT EXISTS `cloud_storage`;");
-        log.info("Database created ...");
+        log.info("Database created...");
     }
 
     private void createTables() throws SQLException {
@@ -81,13 +82,38 @@ public class MySQLAuthService implements AuthService {
                 "   ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;");
     }
 
-    @Override
-    public void stop() {
 
+    public void stop() {
+        try {
+            if (statement != null) {
+                statement.close();
+            }
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
+        try {
+            if (connection != null) {
+                connection.close();
+            }
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
+        log.info("Auth server stopped...");
     }
 
-    @Override
-    public Optional<String> getNickByLoginAndPass(String login, String password) {
-        return Optional.empty();
+
+    public boolean isUserExists(NewUserMessage cloudMessage) {
+        //todo проверка наличия пользователя в базе по логину и почте
+        return false;
+    }
+
+    public boolean isLoginBusy(NewUserMessage cloudMessage) {
+        //todo проверка занят ли логин
+        return false;
+    }
+
+    public boolean isEmailBusy(NewUserMessage cloudMessage) {
+        //todo проверка занята ли почта
+        return false;
     }
 }

@@ -1,5 +1,7 @@
 package server;
 
+import model.NewUserMessage;
+
 import java.util.Optional;
 
 /**
@@ -17,11 +19,5 @@ public interface AuthService {
      */
     void stop();
 
-    /**
-     * Получить никнейм по логину и паролю
-     * @param login - логин пользователя
-     * @param password - пароль пользователя
-     * @return никнейм найден = никнейм, не найден = null
-     */
-    Optional<String> getNickByLoginAndPass(String login, String password);
+    boolean isUserExists(NewUserMessage cloudMessage);
 }

@@ -9,7 +9,8 @@
 <?import javafx.scene.layout.Pane?>
 <?import javafx.scene.text.Font?>
 
-<Pane maxHeight="-Infinity" maxWidth="-Infinity" minHeight="-Infinity" minWidth="-Infinity" prefHeight="461.0" prefWidth="510.0" xmlns="http://javafx.com/javafx/18" xmlns:fx="http://javafx.com/fxml/1" fx:controller="client.ClientNetty">
+<Pane maxHeight="-Infinity" maxWidth="-Infinity" minHeight="-Infinity" minWidth="-Infinity" prefHeight="461.0" prefWidth="510.0"
+      xmlns="http://javafx.com/javafx/18" xmlns:fx="http://javafx.com/fxml/1" fx:controller="client.ClientNetty">
    <children>
       <Label alignment="CENTER" layoutX="172.0" layoutY="25.0" prefHeight="20.0" prefWidth="171.0" text="Register your account">
          <font>

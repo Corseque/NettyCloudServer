@@ -12,10 +12,14 @@ import java.nio.file.Path;
 //обработчик входящих сообщений от клиента
 
 @Slf4j
-
 public class CloudServerHandler extends SimpleChannelInboundHandler<CloudMessage> {
-    private Path rootDir = Path.of("C:/Users/Corse/IdeaProjects/NettyCloudServer/data");
+    private final Path rootDir = Path.of("C:/Users/Corse/IdeaProjects/NettyCloudServer/data");
     private Path currentDir;
+    private final CloudServer server;
+
+    public CloudServerHandler(CloudServer server) {
+        this.server = server;
+    }
 
     public void channelActive(ChannelHandlerContext ctx) throws IOException {
         currentDir = rootDir;
@@ -34,8 +38,25 @@ public class CloudServerHandler extends SimpleChannelInboundHandler<CloudMessage
                 sendList(ctx, currentDir);
                 break;
             case SERVER_DIR:
-                processServerDirMessage((ServerDirMessage)cloudMessage, ctx);
+                processServerDirMessage((ServerDirMessage) cloudMessage, ctx);
                 break;
+            case NEW_USER:
+                processNewUserMessage((NewUserMessage) cloudMessage, ctx);
+                break;
+            case LOGIN:
+                //todo написать обработчик
+        }
+    }
+
+    private void processNewUserMessage(NewUserMessage cloudMessage, ChannelHandlerContext ctx) {
+        if (server.getAuthService().isUserExists(cloudMessage)) {
+            ctx.writeAndFlush(new NewUserMessage(cloudMessage, true, true, true));
+        } else if (server.getAuthService().isLoginBusy(cloudMessage)) {
+            ctx.writeAndFlush(new NewUserMessage(cloudMessage, true, true, false));
+        } else if (server.getAuthService().isEmailBusy(cloudMessage)) {
+            ctx.writeAndFlush(new NewUserMessage(cloudMessage, true, false, true));
+        } else {
+            ctx.writeAndFlush(new NewUserMessage(cloudMessage, false, false, false));
         }
     }
 
