@@ -2,8 +2,6 @@ package client;
 
 
 import javafx.application.Platform;
-import javafx.scene.control.ListView;
-import javafx.scene.control.TextField;
 import lombok.extern.slf4j.Slf4j;
 import model.*;
 
@@ -18,34 +16,27 @@ import java.util.Map;
 @Slf4j
 public class ProcessorRegistry {
 
-    private Callback callback;
+    private CallbackToClient callbackClient;
+    private CallbackToLoginForm callbackLogin;
 
-    public void registerCallback(Callback callback) {
-        this.callback = callback;
+    public void registerCallback(CallbackToClient callback) {
+        this.callbackClient = callback;
+    }
+
+    public void registerCallback(CallbackToLoginForm callback) {
+        this.callbackLogin = callback;
     }
 
     private final Map<CommandType, MessageProcessor> map;
-//    private Path clientDir;
-//    public ListView<String> clientView;
-//    public ListView<String> serverView;
-//    public TextField serverPath;
 
-    public ProcessorRegistry(
-//            Path clientDir, ListView<String> clientView, ListView<String> serverView, TextField serverPath
-    ) {
-//        this.clientDir = clientDir;
-//        this.clientView = clientView;
-//        this.serverView = serverView;
-//        this.serverPath = serverPath;
+
+    public ProcessorRegistry() {
+
         map = new HashMap<>();
 
         map.put(CommandType.FILES_LIST, msg -> {
             FilesListMessage message = (FilesListMessage) msg;
-            callback.updateFilesList(message.getFiles());
-////            Platform.runLater(() -> {
-////                serverView.getItems().clear();
-////                serverView.getItems().addAll(message.getFiles());
-////            });
+            callbackClient.updateServerFilesList(message.getFiles());
         });
         map.put(CommandType.UPLOAD_FILE, msg -> {
             UploadFileMessage message = (UploadFileMessage) msg;
@@ -53,16 +44,15 @@ public class ProcessorRegistry {
 //        map.put(CommandType.UPLOAD_FILES, msg -> {});
         map.put(CommandType.DOWNLOAD_FILE, msg -> {
             DownloadFileMessage message = (DownloadFileMessage) msg;
-            Path path = callback.getClientDir().resolve(message.getFileName());
+            Path path = callbackClient.getClientDir().resolve(message.getFileName());
             Files.write(path, message.getBytes());
-            Platform.runLater(() -> callback.updateClientView());
+            Platform.runLater(() -> callbackClient.updateClientView());
 
         });
 //        map.put(CommandType.DOWNLOAD_FILES, msg -> {});
         map.put(CommandType.SERVER_DIR, msg -> {
             ServerDirMessage message = (ServerDirMessage) msg;
-            callback.setServerPath(message.getCurrentDir());
-////            serverPath.setText(message.getCurrentDir());
+            callbackClient.setServerPath(message.getCurrentDir());
         });
 //        map.put(CommandType.OPEN_SERVER_FILE, msg -> {});
 //        map.put(CommandType.RENAME_SERVER_DIR, msg -> {});
@@ -94,11 +84,14 @@ public class ProcessorRegistry {
             }
         });
         map.put(CommandType.LOGIN, msg -> {
-            if (((LoginMessage) msg).isLoginSuccess()) {
-                //todo открыть клиент под конктреным пользователем
-            } else {
-                //todo вывести сообщение, что введен неверный логин или пароль
-            }
+//            if (((LoginMessage) msg).isLoginSuccess()) {
+            LoginMessage message = (LoginMessage) msg;
+            Platform.runLater(() -> callbackLogin.loginAccept(Path.of(message.getRootDir())));
+
+                //todo отправить пользовательскую дирректорию
+//            } else {
+//                callbackLogin.invalidLoginOrPassword();
+//            }
         });
     }
 
@@ -106,24 +99,5 @@ public class ProcessorRegistry {
         map.get(msg.getType()).processMessage(msg);
         log.info("Get message on client: " + msg.getType().toString());
     }
-
-//    public void setClientDir(Path clientDir) {
-//        this.clientDir = clientDir;
-//    }
-
-//    public Path getClientDir() {
-//        return clientDir;
-//    }
-
-//    private void updateClientView() {
-//        try {
-//            clientView.getItems().clear();
-//            Files.list(clientDir)
-//                    .map(p -> p.getFileName().toString())
-//                    .forEach(f -> clientView.getItems().add(f));
-//        } catch (IOException e) {
-//            e.printStackTrace();
-//        }
-//    }
 
 }
