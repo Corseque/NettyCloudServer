@@ -4,6 +4,7 @@ import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.SimpleChannelInboundHandler;
 import lombok.extern.slf4j.Slf4j;
 import model.*;
+import org.apache.commons.codec.digest.DigestUtils;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -13,13 +14,17 @@ import java.nio.file.Path;
 
 @Slf4j
 public class CloudServerHandler extends SimpleChannelInboundHandler<CloudMessage> {
-    private final Path rootDir = Path.of("C:/Users/Corse/IdeaProjects/NettyCloudServer/data");
+    private final Path rootDir;
+    private final MySQLAuthService mySQL;
+    private String userLogin = "";
+
     private Path currentDir;
-    private final CloudServer server;
-   // ChannelHandlerContext ctx;
+
+    // ChannelHandlerContext ctx;
 
     public CloudServerHandler(CloudServer server) {
-        this.server = server;
+        mySQL = server.getAuthService();
+        rootDir = server.getRootDir();
     }
 
     public void channelActive(ChannelHandlerContext ctx) {
@@ -32,17 +37,19 @@ public class CloudServerHandler extends SimpleChannelInboundHandler<CloudMessage
         log.info("Get message on server: " + cloudMessage.getType().toString());
         switch (cloudMessage.getType()) {
             case FILES_LIST:
-                sendList(ctx, currentDir);
+                if (userLogin.equals("")) {
+                    userLogin = ((FilesListMessage) cloudMessage).getPath();
+                }
+                sendList(ctx, Path.of(((FilesListMessage) cloudMessage).getPath()));
                 break;
             case DOWNLOAD_FILE:
                 processDownloadFileMessage((DownloadFileMessage) cloudMessage, ctx);
                 break;
             case UPLOAD_FILE:
-                processUploadFileMessage((UploadFileMessage) cloudMessage);
-                sendList(ctx, currentDir);
+                processUploadFileMessage((UploadFileMessage) cloudMessage, ctx);
                 break;
             case SERVER_DIR:
-                processServerDirMessage((ServerDirMessage) cloudMessage, ctx);
+                processServerDirMessage(Path.of(((ServerDirMessage) cloudMessage).getCurrentDir()), ctx);
                 break;
             case NEW_USER:
                 processNewUserMessage((NewUserMessage) cloudMessage, ctx);
@@ -53,31 +60,32 @@ public class CloudServerHandler extends SimpleChannelInboundHandler<CloudMessage
         }
     }
 
-    private void processLoginMessage(LoginMessage cloudMessage, ChannelHandlerContext ctx) {
-        ctx.writeAndFlush(new LoginMessage(cloudMessage, true, rootDir.toString()));
-
-        //todo написать обработчик через проверку пользователя в БД
-    }
-
-    private void processNewUserMessage(NewUserMessage cloudMessage, ChannelHandlerContext ctx) {
-        if (server.getAuthService().isUserExists(cloudMessage)) {
-            ctx.writeAndFlush(new NewUserMessage(cloudMessage, true, true, true));
-        } else if (server.getAuthService().isLoginBusy(cloudMessage)) {
-            ctx.writeAndFlush(new NewUserMessage(cloudMessage, true, true, false));
-        } else if (server.getAuthService().isEmailBusy(cloudMessage)) {
-            ctx.writeAndFlush(new NewUserMessage(cloudMessage, true, false, true));
+    private Path revealPathMask(Path mask) {
+        Path dir;
+        int nameCount = mask.getNameCount();
+        if (nameCount > 1) {
+            dir = mask.subpath(1, nameCount);
+            return rootDir.resolve(dir);
         } else {
-            ctx.writeAndFlush(new NewUserMessage(cloudMessage, false, false, false));
+            return rootDir;
         }
     }
 
-    private void sendList(ChannelHandlerContext ctx, Path dir) throws IOException {
-        ctx.writeAndFlush(new ServerDirMessage(dir));
-        ctx.writeAndFlush(new FilesListMessage(dir));
+    private void sendList(ChannelHandlerContext ctx, Path dirMask) throws IOException {
+        ctx.writeAndFlush(new ServerDirMessage(dirMask));
+        currentDir = revealPathMask(dirMask);
+        ctx.writeAndFlush(new FilesListMessage(mySQL.userFiles(userLogin, currentDir)));
     }
 
-    private void processUploadFileMessage(UploadFileMessage cloudMessage) throws IOException {
-        Files.write(currentDir.resolve(cloudMessage.getFileName()), cloudMessage.getBytes());
+    private void processUploadFileMessage(UploadFileMessage cloudMessage, ChannelHandlerContext ctx) throws IOException {
+        String fileKey = DigestUtils.md5Hex(userLogin + cloudMessage.getFileName());
+        if (!mySQL.isFileExists(fileKey)) {
+            Files.write(currentDir.resolve(fileKey), cloudMessage.getBytes());
+            ctx.writeAndFlush(new FilesListMessage(currentDir));
+            mySQL.addFile(cloudMessage.getFileName(), currentDir.toString(), fileKey, userLogin);
+        } else {
+            ctx.writeAndFlush(new AlertMessage("The file already exists. Do you want to replace the file?"));
+        }
     }
 
     private void processDownloadFileMessage(DownloadFileMessage cloudMessage, ChannelHandlerContext ctx) throws IOException {
@@ -85,16 +93,44 @@ public class CloudServerHandler extends SimpleChannelInboundHandler<CloudMessage
         ctx.writeAndFlush(new DownloadFileMessage(path));
     }
 
-    private void processServerDirMessage(ServerDirMessage cloudMessage, ChannelHandlerContext ctx) throws IOException {
-        Path path = Path.of(cloudMessage.getCurrentDir());
-        if (Files.isDirectory(path)) {
-            if (rootDir.compareTo(path) == 0 || rootDir.compareTo(path) > 0) {
-                sendList(ctx, rootDir);
+    private void processServerDirMessage(Path dirMask, ChannelHandlerContext ctx) throws IOException {
+        currentDir = revealPathMask(dirMask);
+        if (Files.isDirectory(currentDir)) {
+            if (rootDir.compareTo(currentDir) == 0 || rootDir.compareTo(currentDir) > 0) {
+                currentDir = rootDir;
+                sendList(ctx, dirMask);
             } else {
-                currentDir = path;
-                sendList(ctx, currentDir);
+                sendList(ctx, dirMask);
             }
         }
     }
+
+    private void processLoginMessage(LoginMessage cloudMessage, ChannelHandlerContext ctx) {
+        if (mySQL.isUserRegistered(cloudMessage.getUserLogin())) {
+            if (mySQL.isLoginSuccess(cloudMessage.getUserLogin(), cloudMessage.getUserPassword())) {
+                cloudMessage.setLoginSuccess(true);
+                userLogin = cloudMessage.getUserLogin();
+                cloudMessage.setRootDir(userLogin);
+            } else {
+                cloudMessage.setLoginSuccess(false);
+            }
+        }
+        ctx.writeAndFlush(new LoginMessage(cloudMessage));
+    }
+
+    private void processNewUserMessage(NewUserMessage cloudMessage, ChannelHandlerContext ctx) {
+        if (mySQL.isLoginAndEmailBusy(cloudMessage.getUserLogin(), cloudMessage.getUserEmail())) {
+            cloudMessage.setLoginBusy(true);
+            cloudMessage.setEmailBusy(true);
+        } else if (mySQL.isLoginBusy(cloudMessage.getUserLogin(), cloudMessage.getUserEmail())) {
+            cloudMessage.setLoginBusy(true);
+        } else if (mySQL.isEmailBusy(cloudMessage.getUserLogin(), cloudMessage.getUserEmail())) {
+            cloudMessage.setEmailBusy(true);
+        } else {
+            mySQL.addNewUser(cloudMessage);
+        }
+        ctx.writeAndFlush(new NewUserMessage(cloudMessage));
+    }
+
 
 }

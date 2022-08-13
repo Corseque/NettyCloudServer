@@ -16,15 +16,20 @@ import java.util.Map;
 @Slf4j
 public class ProcessorRegistry {
 
-    private CallbackToClient callbackClient;
+    private CallbackToClientForm callbackClient;
     private CallbackToLoginForm callbackLogin;
+    private CallbackToRegisterForm callbackRegister;
 
-    public void registerCallback(CallbackToClient callback) {
+    public void registerCallback(CallbackToClientForm callback) {
         this.callbackClient = callback;
     }
 
     public void registerCallback(CallbackToLoginForm callback) {
         this.callbackLogin = callback;
+    }
+
+    public void registerCallback(CallbackToRegisterForm callback) {
+        this.callbackRegister = callback;
     }
 
     private final Map<CommandType, MessageProcessor> map;
@@ -67,31 +72,30 @@ public class ProcessorRegistry {
 //        map.put(CommandType.SHARE_SERVER_FILE, msg -> {});
         map.put(CommandType.NEW_USER, msg -> {
             NewUserMessage message = (NewUserMessage) msg;
-            if (message.isUserAlreadyExists()) {
-                //todo вернуть на форму регистрации и подсветить поля, для изменения
                 if (message.isLoginBusy() && message.isEmailBusy()) {
-
+                    Platform.runLater(() -> callbackRegister.userExists(message.getUserLogin(), message.getUserEmail()));
+                } else if (message.isLoginBusy() && !message.isEmailBusy()) {
+                        Platform.runLater(() -> callbackRegister.loginBusy(message.getUserLogin()));
+                } else if (!message.isLoginBusy() && message.isEmailBusy()) {
+                        Platform.runLater(() -> callbackRegister.emailBusy(message.getUserEmail()));
                 } else {
-                    if (message.isLoginBusy()) {
-
-                    }
-                    if (message.isEmailBusy()) {
-
-                    }
-                }
-            } else {
+                Platform.runLater(() -> callbackRegister.registerSuccess());
                 //todo скрыть форму регистрации, открыть форму логина (?->) с предзаполненым логином
             }
         });
         map.put(CommandType.LOGIN, msg -> {
-//            if (((LoginMessage) msg).isLoginSuccess()) {
             LoginMessage message = (LoginMessage) msg;
-            Platform.runLater(() -> callbackLogin.loginAccept(Path.of(message.getRootDir())));
+            if (message.isLoginSuccess()) {
+                Platform.runLater(() -> callbackLogin.loginAccept(message.getRootDir()));
 
                 //todo отправить пользовательскую дирректорию
-//            } else {
-//                callbackLogin.invalidLoginOrPassword();
-//            }
+            } else {
+                Platform.runLater(() -> callbackLogin.invalidLoginOrPassword());
+            }
+        });
+        map.put(CommandType.ALERT, msg -> {
+            AlertMessage message = (AlertMessage) msg;
+            Platform.runLater(() -> callbackClient.processAlert(message.getAlert()));
         });
     }
 

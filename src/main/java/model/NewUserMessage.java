@@ -14,9 +14,8 @@ public class NewUserMessage implements CloudMessage{
     private final String userEmail;
     private final String userLogin;
     private final String userPassword;
-    private final boolean userAlreadyExists;
-    private final boolean loginBusy;
-    private final boolean emailBusy;
+    private boolean loginBusy;
+    private boolean emailBusy;
 
     public NewUserMessage(String userName, String userSurname, String userGender, String userBirthDate, String userPhoneNum, String userEmail, String userLogin, String userPassword) {
         this.userName = userName;
@@ -27,12 +26,12 @@ public class NewUserMessage implements CloudMessage{
         this.userEmail = userEmail;
         this.userLogin = userLogin;
         this.userPassword = userPassword;
-        userAlreadyExists = false;
         loginBusy = false;
         emailBusy = false;
     }
 
-    public NewUserMessage(NewUserMessage message, boolean userAlreadyExists, boolean loginBusy, boolean emailBusy) {
+
+    public NewUserMessage(NewUserMessage message) {
         this.userName = message.userName;
         this.userSurname = message.userSurname;
         this.userGender = message.userGender;
@@ -41,9 +40,8 @@ public class NewUserMessage implements CloudMessage{
         this.userEmail = message.userEmail;
         this.userLogin = message.userLogin;
         this.userPassword = message.userPassword;
-        this.userAlreadyExists = userAlreadyExists;
-        this.loginBusy = loginBusy;
-        this.emailBusy = emailBusy;
+        this.loginBusy = message.loginBusy;
+        this.emailBusy = message.emailBusy;
     }
 
     @Override

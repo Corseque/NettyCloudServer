@@ -3,13 +3,17 @@ package server;
 import lombok.extern.slf4j.Slf4j;
 import model.NewUserMessage;
 
-import java.sql.Connection;
-import java.sql.DriverManager;
-import java.sql.SQLException;
-import java.sql.Statement;
+import java.nio.file.Path;
+import java.sql.*;
+import java.text.SimpleDateFormat;
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.List;
+
+import static server.SQLConstants.*;
 
 @Slf4j
-public class MySQLAuthService {
+public class MySQLAuthService extends SQLConfig {
 
     private static Connection connection;
     private static Statement statement;
@@ -17,71 +21,20 @@ public class MySQLAuthService {
 
     public void start() {
         try {
+            log.info("Auth server started...");
             connect();
-            createDatabase();
-            createTables();
-            //insertUsers();
-            //dropTable();
-        } catch (SQLException e) {
+        } catch (SQLException | ClassNotFoundException e) {
             e.printStackTrace();
         }
     }
 
-    private void connect() throws SQLException {
-        log.info("Auth server started...");
-        connection =  DriverManager.getConnection("jdbc:mysql://localhost:3306/","root", "root");
+    private void connect() throws SQLException, ClassNotFoundException {
+        Class.forName("com.mysql.cj.jdbc.Driver");
+        String connectionStr = "jdbc:mysql://" + DB_HOST + ":" + DB_PORT + "/" + DB_NAME;
+        connection = DriverManager.getConnection(connectionStr, DB_USER, DB_PASSWORD);
         log.info("Connected to MySQL...");
         statement = connection.createStatement();
-
     }
-
-    private void createDatabase() throws SQLException {
-        statement.executeUpdate("CREATE DATABASE IF NOT EXISTS `cloud_storage`;");
-        log.info("Database created...");
-    }
-
-    private void createTables() throws SQLException {
-        statement.executeUpdate("CREATE TABLE IF NOT EXISTS `cloud_storage`.`users` (\n" +
-                "  `id` INT(10) UNSIGNED ZEROFILL NOT NULL AUTO_INCREMENT,\n" +
-                "  `user_name` VARCHAR(45) NOT NULL,\n" +
-                "  `user_surname` VARCHAR(45) NOT NULL,\n" +
-                "  `birth_date` DATE DEFAULT NULL,\n" +
-                "  `gender` VARCHAR(45) NOT NULL,\n" +
-                "  `phone_num` VARCHAR(45) NULL,\n" +
-                "  `email` VARCHAR(45) NOT NULL,\n" +
-                "  `login` VARCHAR(45) NOT NULL,\n" +
-                "  `password` VARCHAR(45) NOT NULL,\n" +
-                "   PRIMARY KEY (`id`),\n" +
-                "   UNIQUE KEY `id_UNIQUE` (`id`),\n" +
-                "   UNIQUE KEY `idx_login` (`login`),\n" +
-                "   UNIQUE KEY `idx_email` (`email`),\n" +
-                "   UNIQUE KEY `phone_num_UNIQUE` (`phone_num`)\n" +
-                "   ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;");
-
-        statement.executeUpdate("CREATE TABLE IF NOT EXISTS `cloud_storage`.`files` (\n" +
-                "  `id` INT(10) UNSIGNED ZEROFILL NOT NULL AUTO_INCREMENT,\n" +
-                "  `file_name` VARCHAR(45) NOT NULL,\n" +
-                "  `file_path` VARCHAR(255) NOT NULL,\n" +
-                "  `upload_date` DATETIME NOT NULL,\n" +
-                "  `delete_date` DATETIME NOT NULL,\n" +
-                "   PRIMARY KEY (`id`),\n" +
-                "   UNIQUE KEY `id_UNIQUE` (`id`),\n" +
-                "   UNIQUE KEY `idx_path_to_file` (`file_name`,`file_path`)\n" +
-                "   ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;");
-
-        statement.executeUpdate("CREATE TABLE IF NOT EXISTS `cloud_storage`.`user_files` (\n" +
-                "  `id_user_owner` INT(10) UNSIGNED ZEROFILL NOT NULL,\n" +
-                "  `id_user_receiver` INT(10) UNSIGNED ZEROFILL NOT NULL,\n" +
-                "  `id_file` INT(10) UNSIGNED ZEROFILL NOT NULL,\n" +
-                "   KEY `fk_user_files_file_idx` (`id_file`),\n" +
-                "   KEY `fk_user_files_user_owner_idx` (`id_user_owner`),\n" +
-                "   KEY `fk_user_files_user_receiver_idx` (`id_user_receiver`),\n" +
-                "   CONSTRAINT `fk_user_files_file` FOREIGN KEY (`id_file`) REFERENCES `files` (`id`),\n" +
-                "   CONSTRAINT `fk_user_files_user_owner` FOREIGN KEY (`id_user_owner`) REFERENCES `users` (`id`),\n" +
-                "   CONSTRAINT `fk_user_files_user_receiver` FOREIGN KEY (`id_user_receiver`) REFERENCES `users` (`id`)\n" +
-                "   ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;");
-    }
-
 
     public void stop() {
         try {
@@ -101,19 +54,238 @@ public class MySQLAuthService {
         log.info("Auth server stopped...");
     }
 
-
-    public boolean isUserExists(NewUserMessage cloudMessage) {
-        //todo проверка наличия пользователя в базе по логину и почте
-        return false;
+    private int countOfEntries(String select){
+        try (ResultSet rs = statement.executeQuery(select)) {
+            if (rs.next()) {
+                return rs.getInt("count");
+            } else {
+                return 0;
+            }
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
+        return 0;
     }
 
-    public boolean isLoginBusy(NewUserMessage cloudMessage) {
-        //todo проверка занят ли логин
-        return false;
+    private int countOfUsers() {
+        String select = "SELECT COUNT(*) AS count from " + USER_TABLE;
+        return countOfEntries(select);
     }
 
-    public boolean isEmailBusy(NewUserMessage cloudMessage) {
-        //todo проверка занята ли почта
-        return false;
+    private int countOfFiles() {
+        String select = "SELECT COUNT(*) AS count from " + FILE_TABLE;
+        return countOfEntries(select);
     }
+
+
+    public void addNewUser(NewUserMessage cloudMessage) {
+        String insert;
+        if (countOfUsers() == 0) {
+            insert = "INSERT INTO " + USER_TABLE + " (id, " + USER_NAME + ", " + USER_SURNAME + ", " + USER_BIRTHDAY
+                    + ", " + USER_GENDER + ", " + USER_PHONE + ", " + USER_EMAIL + ", " + USER_LOGIN + ", " + USER_PASSWORD
+                    + ") VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);";
+            try (PreparedStatement ps = connection.prepareStatement(insert)) {
+                ps.setInt(1, 1);
+                ps.setString(2, cloudMessage.getUserName());
+                ps.setString(3, cloudMessage.getUserSurname());
+                if (cloudMessage.getUserBirthDate().equals("")) {
+                    ps.setString(4, "0001-01-01");
+                } else {
+                    ps.setString(4, cloudMessage.getUserBirthDate());
+                }
+                ps.setString(5, cloudMessage.getUserGender());
+                if (cloudMessage.getUserPhoneNum().equals("")) {
+                    ps.setString(6, "null");
+                } else {
+                    ps.setString(6, cloudMessage.getUserPhoneNum());
+                }
+                ps.setString(7, cloudMessage.getUserEmail());
+                ps.setString(8, cloudMessage.getUserLogin());
+                ps.setString(9, cloudMessage.getUserPassword());
+                ps.executeUpdate();
+            } catch (Exception ex) {
+                ex.printStackTrace();
+            }
+        } else {
+            insert = "INSERT INTO " + USER_TABLE + " (" + USER_NAME + ", " + USER_SURNAME + ", " + USER_BIRTHDAY
+                    + ", " + USER_GENDER + ", " + USER_PHONE + ", " + USER_EMAIL + ", " + USER_LOGIN + ", " + USER_PASSWORD
+                    + ") VALUES (?, ?, ?, ?, ?, ?, ?, ?);";
+            try (PreparedStatement ps = connection.prepareStatement(insert)) {
+                ps.setString(1, cloudMessage.getUserName());
+                ps.setString(2, cloudMessage.getUserSurname());
+                if (cloudMessage.getUserBirthDate().equals("")) {
+                    ps.setString(3, "0001-01-01");
+                } else {
+                    ps.setString(3, cloudMessage.getUserBirthDate());
+                }
+                ps.setString(4, cloudMessage.getUserGender());
+                if (cloudMessage.getUserPhoneNum().equals("")) {
+                    ps.setString(5, "null");
+                } else {
+                    ps.setString(5, cloudMessage.getUserPhoneNum());
+                }
+                ps.setString(6, cloudMessage.getUserEmail());
+                ps.setString(7, cloudMessage.getUserLogin());
+                ps.setString(8, cloudMessage.getUserPassword());
+                ps.executeUpdate();
+            } catch (Exception ex) {
+                ex.printStackTrace();
+            }
+        }
+    }
+
+    private boolean isEntryExists(String select) {
+        try (ResultSet rs = statement.executeQuery(select)) {
+            if (rs.next()) {
+                return rs.getInt("count") != 0;
+            }
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
+        return true;
+    }
+
+    public boolean isUserRegistered(String userLogin) {
+        String select = "SELECT COUNT(*) AS count from " + USER_TABLE +
+                " WHERE " +
+                USER_LOGIN + " = '" + userLogin + "';";
+        return isEntryExists(select);
+    }
+
+
+    public boolean isLoginSuccess(String userLogin, String userPassword) {
+        String select = "SELECT COUNT(*) AS count from " + USER_TABLE +
+                " WHERE " +
+                USER_LOGIN + " = '" + userLogin + "' AND " +
+                USER_PASSWORD + " = '" + userPassword + "';";
+        return isEntryExists(select);
+    }
+
+    public boolean isLoginAndEmailBusy(String userLogin, String userEmail) {
+        String select = "SELECT COUNT(*) AS count from " + USER_TABLE +
+                " WHERE " +
+                USER_LOGIN + " = '" + userLogin + "' AND " +
+                USER_EMAIL + " = '" + userEmail + "';";
+        return isEntryExists(select);
+    }
+
+    public boolean isLoginBusy(String userLogin, String userEmail) {
+        String select = "SELECT COUNT(*) AS count from " + USER_TABLE +
+                " WHERE " +
+                USER_LOGIN + " = '" + userLogin + "' AND " +
+                USER_EMAIL + " != '" + userEmail + "';";
+        return isEntryExists(select);
+    }
+
+    public boolean isEmailBusy(String userLogin, String userEmail) {
+        String select = "SELECT COUNT(*) AS count from " + USER_TABLE +
+                " WHERE " +
+                USER_LOGIN + " != '" + userLogin + "' AND " +
+                USER_EMAIL + " = '" + userEmail + "';";
+        return isEntryExists(select);
+    }
+
+    public boolean isFileExists(String fileKey){
+        String select = "SELECT COUNT(*) AS count from " + FILE_TABLE +
+                " WHERE " +
+                FILE_KEY + " = '" + fileKey + "';";
+        return isEntryExists(select);
+    }
+
+    public void addFile(String fileName, String filePath, String fileKey, String userLogin) {
+        String insert;
+        if (countOfFiles() == 0) {
+            insert = "INSERT INTO " + FILE_TABLE + " (id, " + FILE_NAME + ", " + FILE_PATH + ", " + FILE_KEY
+                    + ", " + FILE_UPLOAD_DATE + ", " + FILE_DELETE_DATE
+                    + ") VALUES (?, ?, ?, ?, ?, ?);";
+            try (PreparedStatement ps = connection.prepareStatement(insert)) {
+                ps.setInt(1, 1);
+                ps.setString(2, fileName);
+                ps.setString(3, filePath);
+                ps.setString(4, fileKey);
+                ps.setString(5, new SimpleDateFormat("yyyy-MM-dd").format(new Date()));
+                ps.setString(6, "9999-01-01");
+                ps.executeUpdate();
+            } catch (Exception ex) {
+                ex.printStackTrace();
+            }
+        } else {
+            insert = "INSERT INTO " + FILE_TABLE + " (" + FILE_NAME + ", " + FILE_PATH + ", " + FILE_KEY
+                    + ", " + FILE_UPLOAD_DATE + ", " + FILE_DELETE_DATE
+                    + ") VALUES (?, ?, ?, ?, ?);";
+            try (PreparedStatement ps = connection.prepareStatement(insert)) {
+                ps.setString(1, fileName);
+                ps.setString(2, filePath);
+                ps.setString(3, fileKey);
+                ps.setString(4, new SimpleDateFormat("yyyy-MM-dd").format(new Date()));
+                ps.setString(5, "9999-01-01");
+                ps.executeUpdate();
+            } catch (Exception ex) {
+                ex.printStackTrace();
+            }
+        }
+        int userID = selectUserID(userLogin);
+        int fileID = selectFileID(fileKey);
+        if (userID !=0 && fileID != 0) {
+            insert = "INSERT INTO " + USER_FILES_TABLE + " (" + USER_FILES_FILE_ID + ", " + USER_FILES_USER_OWNER
+                    + ", " + USER_FILES_USER_RECEIVER
+                    + ") VALUES (?, ?, ?);";
+            try (PreparedStatement ps = connection.prepareStatement(insert)) {
+                ps.setInt(1, fileID);
+                ps.setInt(2, userID);
+                ps.setInt(3, 0);
+                ps.executeUpdate();
+            } catch (Exception ex) {
+                ex.printStackTrace();
+            }
+        } else {
+            //todo сообщение об ошибке?
+        }
+    }
+
+    private int selectUserID(String userLogin) {
+        String select = "SELECT id FROM " + USER_TABLE + " WHERE " + USER_LOGIN + " = '" + userLogin + "';";
+        return selectEntryID(select);
+    }
+
+    private int selectFileID(String fileKey) {
+        String select = "SELECT id FROM " + FILE_TABLE + " WHERE " + FILE_KEY + " = '" + fileKey + "';";
+        return selectEntryID(select);
+    }
+
+    private int selectEntryID(String select) {
+        try (ResultSet rs = statement.executeQuery(select)) {
+            if (rs.next()) {
+                return rs.getInt("id");
+            } else {
+                return 0;
+            }
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
+        return 0;
+    }
+
+    public List<String> userFiles(String userLogin, Path currentDir) {
+        List<String> files = new ArrayList<>();
+        int userID = selectUserID(userLogin);
+
+        String select = "SELECT " + FILE_NAME + ", " + FILE_PATH + " FROM " + USER_FILES_TABLE
+                + " LEFT JOIN " + FILE_TABLE
+                + " ON " + USER_FILES_FILE_ID + " = " + "id"
+                + " WHERE "
+                + USER_FILES_USER_OWNER + " = '" + userID + "';";
+        try (ResultSet rs = statement.executeQuery(select)) {
+            while (rs.next()) {
+                if (Path.of(rs.getString(FILE_PATH)).compareTo(currentDir) == 0) {
+                    files.add(rs.getString(FILE_NAME));
+                }
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return files;
+    }
+
+
 }

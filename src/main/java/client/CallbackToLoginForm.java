@@ -4,5 +4,5 @@ import java.nio.file.Path;
 
 public interface CallbackToLoginForm {
     void invalidLoginOrPassword();
-    void loginAccept(Path rootDir);
+    void loginAccept(String rootDir);
 }
