@@ -5,6 +5,7 @@ import lombok.Data;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -12,13 +13,22 @@ import java.util.stream.Collectors;
 public class FilesListMessage implements CloudMessage {
 
     private final List<String> files;
-  //  private final Path path;
+    private final String path;
 
     public FilesListMessage(Path path) throws IOException {
-        files = Files.list(path)
-                .map(p -> p.getFileName().toString())
-                .collect(Collectors.toList());
-    //    this.path = path;
+        if (path.isAbsolute()) {
+            files = Files.list(path)
+                    .map(p -> p.getFileName().toString())
+                    .collect(Collectors.toList());
+        } else {
+            files = new ArrayList<>();
+        }
+        this.path = path.toString();
+    }
+
+    public FilesListMessage(List<String> files) throws IOException {
+        this.files = files;
+        path = null;
     }
 
     @Override

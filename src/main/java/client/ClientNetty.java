@@ -14,13 +14,13 @@ import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
+import java.util.Optional;
 import java.util.ResourceBundle;
 
 
 @Slf4j
-public class ClientNetty extends Network implements Initializable, CallbackToClient {
+public class ClientNetty extends Network implements Initializable, CallbackToClientForm {
 
-    //client form
     public ListView<String> serverView;
     public ListView<String> clientView;
     public TextField serverPath;
@@ -31,6 +31,7 @@ public class ClientNetty extends Network implements Initializable, CallbackToCli
     public Button downloadBtn;
 
     private Path clientDir;
+    private Path serverRootDir;
 
     @Override
     public void initialize(URL location, ResourceBundle resources) {
@@ -81,6 +82,13 @@ public class ClientNetty extends Network implements Initializable, CallbackToCli
         return clientDir;
     }
 
+    @Override
+    public void processAlert(String alert) {
+        showAlert(alert);
+        //todo сделать алерт с выбором да/нет и написать обработку на стороне клиента и сервера
+    }
+
+
 //
 //    private void initClientKeyListeners() {
 //        serverView.setOnKeyPressed(e -> {
@@ -107,7 +115,6 @@ public class ClientNetty extends Network implements Initializable, CallbackToCli
                 Path path = clientDir.resolve(getItem());
                 if (Files.isDirectory(path)) {
                     clientDir = path;
-//   todo                 processorRegistry.setClientDir(clientDir);
                     Platform.runLater(this::updateClientView);
                     clientPath.setText(clientDir.toString());
                 } else {
@@ -127,14 +134,15 @@ public class ClientNetty extends Network implements Initializable, CallbackToCli
                 try {
                     Path path = Path.of(serverPath.getText())
                             .resolve(Path.of(serverView.getSelectionModel().getSelectedItem()));
-                    if (Files.isDirectory(path)) {
-                        os.writeObject(new ServerDirMessage(path));
-                    } else {
-                        Desktop desktop = Desktop.getDesktop();
-                        if (path.toFile().exists()) {
-                            desktop.open(path.toFile());
-                        }
-                    }
+                    os.writeObject(new ServerDirMessage(path));
+//                    if (Files.isDirectory(path)) {
+//                        os.writeObject(new ServerDirMessage(path));
+//                    } else {
+//                        Desktop desktop = Desktop.getDesktop();
+//                        if (path.toFile().exists()) {
+//                            desktop.open(path.toFile());
+//                        }
+//                    }
                     os.flush();
                 } catch (IOException ex) {
                     ex.printStackTrace();
@@ -144,20 +152,21 @@ public class ClientNetty extends Network implements Initializable, CallbackToCli
     }
 
     private void initClientButtonsListeners() {
-
         clientFolderUpBtn.setOnAction(e -> {
             Path pathUp = Path.of(clientPath.getText()).getParent();
             if (Files.exists(pathUp)) {
                 clientDir = pathUp;
-//  todo              processorRegistry.setClientDir(clientDir);
                 Platform.runLater(this::updateClientView);
                 clientPath.setText(clientDir.toString());
             }
         });
         serverFolderUpBtn.setOnAction(e -> {
             try {
-                os.writeObject(new ServerDirMessage(Path.of(serverPath.getText()).getParent()));
-                os.flush();
+                if (Path.of(serverPath.getText()).getParent() != null) {
+                    Path path = Path.of(serverPath.getText()).getParent();
+                    os.writeObject(new ServerDirMessage(path));
+                    os.flush();
+                }
             } catch (IOException ex) {
                 ex.printStackTrace();
             }

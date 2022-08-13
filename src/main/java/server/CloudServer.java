@@ -12,9 +12,12 @@ import io.netty.handler.codec.serialization.ObjectDecoder;
 import io.netty.handler.codec.serialization.ObjectEncoder;
 import lombok.Data;
 
+import java.nio.file.Path;
+
 @Data
 public class CloudServer {
     private MySQLAuthService authService;
+    private final Path rootDir = Path.of("C:/Users/Corse/IdeaProjects/NettyCloudServer/data");
 
     public CloudServer() {
         EventLoopGroup auth = new NioEventLoopGroup(1);

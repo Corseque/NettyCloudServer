@@ -10,7 +10,9 @@ import java.nio.file.Path;
 public class UploadFileMessage implements CloudMessage {
 
     private final String fileName;
+
     private final byte[] bytes;
+
 
     public UploadFileMessage(Path path) throws IOException {
         fileName = path.getFileName().toString();

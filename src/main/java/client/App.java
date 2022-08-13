@@ -15,6 +15,7 @@ public class App extends Application {
         Parent parent = FXMLLoader.load(getClass().getResource("login-view.fxml"));
 //        Parent parent = FXMLLoader.load(getClass().getResource("client-view.fxml"));
         stage.setScene(new Scene(parent));
+        stage.setTitle("Cloud storage");
         stage.show();
     }
 

@@ -19,6 +19,7 @@ public enum CommandType {
     SHARE_SERVER_FILE,
     NEW_USER,                    //Command: new user registered
     NEW_USER_REGISTERED,          //Command: new user registered confirmation
-    LOGIN
+    LOGIN,
+    ALERT
 }
 
