@@ -7,14 +7,18 @@ import java.nio.file.Path;
 
 @Data
 public class DeleteServerFileMessage  implements CloudMessage {
-    private final String currentDir;
+    private final String fileName;
+    private final boolean isDirectory;
+    private final String folder;
 
-    public DeleteServerFileMessage(Path dirName) throws IOException {
-        currentDir = dirName.toString();
+    public DeleteServerFileMessage(Path folder) throws IOException {
+        fileName = folder.getFileName().toString();
+        isDirectory = folder.toFile().isDirectory();
+        this.folder = folder.getParent().toString();
     }
 
     @Override
     public CommandType getType() {
-        return CommandType.SERVER_DIR;
+        return CommandType.DELETE_SERVER_FILE;
     }
 }
