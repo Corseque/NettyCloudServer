@@ -9,6 +9,7 @@ import org.apache.commons.codec.digest.DigestUtils;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
 
 //обработчик входящих сообщений от клиента
 
@@ -48,6 +49,9 @@ public class CloudServerHandler extends SimpleChannelInboundHandler<CloudMessage
             case UPLOAD_FILE:
                 processUploadFileMessage((UploadFileMessage) cloudMessage, ctx);
                 break;
+            case REPLACE_FILE:
+                processReplaceFileMessage((ReplaceFileMessage) cloudMessage, ctx);
+                break;
             case SERVER_DIR:
                 processServerDirMessage(Path.of(((ServerDirMessage) cloudMessage).getCurrentDir()), ctx);
                 break;
@@ -74,7 +78,7 @@ public class CloudServerHandler extends SimpleChannelInboundHandler<CloudMessage
     private void sendList(ChannelHandlerContext ctx, Path dirMask) throws IOException {
         ctx.writeAndFlush(new ServerDirMessage(dirMask));
         currentDir = revealPathMask(dirMask);
-        ctx.writeAndFlush(new FilesListMessage(mySQL.userFiles(userLogin, currentDir)));
+        ctx.writeAndFlush(new FilesListMessage(mySQL.userFiles(userLogin, currentDir), dirMask));
     }
 
     private void processUploadFileMessage(UploadFileMessage cloudMessage, ChannelHandlerContext ctx) throws IOException {
@@ -83,14 +87,32 @@ public class CloudServerHandler extends SimpleChannelInboundHandler<CloudMessage
             Files.write(currentDir.resolve(fileKey), cloudMessage.getBytes());
             ctx.writeAndFlush(new FilesListMessage(currentDir));
             mySQL.addFile(cloudMessage.getFileName(), currentDir.toString(), fileKey, userLogin);
+            sendList(ctx, Path.of(cloudMessage.getPath()));
         } else {
             ctx.writeAndFlush(new AlertMessage("The file already exists. Do you want to replace the file?"));
         }
     }
 
+
+    private void processReplaceFileMessage(ReplaceFileMessage cloudMessage, ChannelHandlerContext ctx) {
+        String fileKey = DigestUtils.md5Hex(userLogin + cloudMessage.getFileName());
+        String replacedFileKey = mySQL.markFileReplaced(fileKey);
+        Path path = currentDir.resolve(fileKey);
+        try {
+            Files.move(path, path.resolveSibling(replacedFileKey), StandardCopyOption.REPLACE_EXISTING);
+            Files.write(path, cloudMessage.getBytes());
+            ctx.writeAndFlush(new FilesListMessage(currentDir));
+            mySQL.addFile(cloudMessage.getFileName(), currentDir.toString(), fileKey, userLogin);
+            sendList(ctx, Path.of(cloudMessage.getPath()));
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
     private void processDownloadFileMessage(DownloadFileMessage cloudMessage, ChannelHandlerContext ctx) throws IOException {
-        Path path = currentDir.resolve(cloudMessage.getFileName());
-        ctx.writeAndFlush(new DownloadFileMessage(path));
+        String fileName = cloudMessage.getFileName();
+        Path path = currentDir.resolve(mySQL.findFileKey(userLogin, fileName));
+        ctx.writeAndFlush(new DownloadFileMessage(path, fileName));
     }
 
     private void processServerDirMessage(Path dirMask, ChannelHandlerContext ctx) throws IOException {

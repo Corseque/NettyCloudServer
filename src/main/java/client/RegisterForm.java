@@ -106,18 +106,12 @@ public class RegisterForm extends Network implements Initializable, CallbackToRe
                     //отправка NewUserMessage
                     String gender = userMale.isSelected() ? "male" : "female";
                     String userBirthday = userBirthDate.getValue() == null ? "0001-01-01" : userBirthDate.getValue().format(DateTimeFormatter.ofPattern("yyyy-MM-dd"));
-                    try {
-
-                        os.writeObject(new NewUserMessage(userName.getText(), userSurname.getText(),
-                                gender, userBirthday, userPhoneNum.getText(),
-                                userEmail.getText(), userLogin.getText(), userPassword.getText()));
-                        os.flush();
-                    } catch (IOException ex) {
-                        ex.printStackTrace();
-                    }
+                    writeToServer(new NewUserMessage(userName.getText(), userSurname.getText(),
+                            gender, userBirthday, userPhoneNum.getText(),
+                            userEmail.getText(), userLogin.getText(), userPassword.getText()));
                 } else {
                     //сообщение о том, что пароли не совпадают
-                    showAlert("Password doesn't match.");
+                    showInfoAlert("Password doesn't match.");
                 }
             } else {
                 //собщение о необходимости заполнить поля со *
@@ -128,14 +122,14 @@ public class RegisterForm extends Network implements Initializable, CallbackToRe
                 alert = userLogin.getText().trim().isEmpty() ? alert.append("\n- Login") : alert;
                 alert = userPassword.getText().trim().isEmpty() ? alert.append("\n- Password") : alert;
                 alert = confirmPassword.getText().trim().isEmpty() ? alert.append("\n- Confirm password") : alert;
-                showAlert(alert.toString());
+                showInfoAlert(alert.toString());
             }
         });
     }
 
     @Override
     public void registerSuccess() {
-        Optional<ButtonType> result = showAlert("New user registered successfully.");
+        Optional<ButtonType> result = showInfoAlert("New user registered successfully.");
         if (result.get() == ButtonType.OK) {
             userRegisterBtn.getScene().getWindow().hide();
             try {
@@ -152,7 +146,7 @@ public class RegisterForm extends Network implements Initializable, CallbackToRe
 
     @Override
     public void userExists(String login, String email) {
-        Optional<ButtonType> result = showAlert("User with login = " + login + " and email = " + email + " already exists.");
+        Optional<ButtonType> result = showInfoAlert("User with login = " + login + " and email = " + email + " already exists.");
         if (result.get() == ButtonType.OK) {
             userLogin.setStyle("-fx-text-inner-color: red;");
             userEmail.setStyle("-fx-text-inner-color: red;");
@@ -161,7 +155,7 @@ public class RegisterForm extends Network implements Initializable, CallbackToRe
 
     @Override
     public void loginBusy(String login) {
-        Optional<ButtonType> result = showAlert("User with login = " + login + " already exists.");
+        Optional<ButtonType> result = showInfoAlert("User with login = " + login + " already exists.");
         if (result.get() == ButtonType.OK) {
             userLogin.setStyle("-fx-text-inner-color: red;");
         }
@@ -169,7 +163,7 @@ public class RegisterForm extends Network implements Initializable, CallbackToRe
 
     @Override
     public void emailBusy(String email) {
-        Optional<ButtonType> result = showAlert("User with email = " + email + " already exists.");
+        Optional<ButtonType> result = showInfoAlert("User with email = " + email + " already exists.");
         if (result.get() == ButtonType.OK) {
             userEmail.setStyle("-fx-text-inner-color: red;");
         }

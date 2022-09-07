@@ -26,9 +26,9 @@ public class FilesListMessage implements CloudMessage {
         this.path = path.toString();
     }
 
-    public FilesListMessage(List<String> files) throws IOException {
+    public FilesListMessage(List<String> files, Path dirMask) throws IOException {
         this.files = files;
-        path = null;
+        path = dirMask.toString();
     }
 
     @Override

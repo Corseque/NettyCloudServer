@@ -6,16 +6,14 @@
 <?import javafx.scene.control.TextField?>
 <?import javafx.scene.layout.Pane?>
 
-<Pane fx:id="cloudStorage" maxHeight="-Infinity" maxWidth="-Infinity" minHeight="-Infinity" minWidth="-Infinity" prefHeight="642.0" prefWidth="877.0"
-      xmlns="http://javafx.com/javafx/18" xmlns:fx="http://javafx.com/fxml/1"
-      fx:controller="client.ClientNetty">
+<Pane fx:id="cloudStorage" maxHeight="-Infinity" maxWidth="-Infinity" minHeight="-Infinity" minWidth="-Infinity" prefHeight="642.0" prefWidth="877.0" xmlns="http://javafx.com/javafx/18" xmlns:fx="http://javafx.com/fxml/1" fx:controller="client.ClientNetty">
    <children>
-      <Button fx:id="uploadBtn" layoutX="417.0" layoutY="72.0" mnemonicParsing="false" prefHeight="25.0" prefWidth="44.0" text="&lt;" />
-      <Button fx:id="downloadBtn" layoutX="417.0" layoutY="120.0" mnemonicParsing="false" prefHeight="25.0" prefWidth="44.0" text="&gt;" />
-      <Button fx:id="editBtn" layoutX="417.0" layoutY="169.0" mnemonicParsing="false" prefHeight="25.0" prefWidth="44.0" text="Edit" />
+      <Button fx:id="uploadBtn" alignment="CENTER" layoutX="417.0" layoutY="100.0" mnemonicParsing="false" prefHeight="26.0" prefWidth="44.0" text="&lt;" />
+      <Button fx:id="downloadBtn" layoutX="417.0" layoutY="150.0" mnemonicParsing="false" prefHeight="26.0" prefWidth="44.0" text="&gt;" />
+      <Button fx:id="createFolderBtn" layoutX="395.0" layoutY="200.0" mnemonicParsing="false" prefHeight="26.0" prefWidth="90.0" text="Create folder" />
 
       <ListView fx:id="serverView" layoutX="26.0" layoutY="56.0" prefHeight="562.0" prefWidth="314.0" />
-      <TextField fx:id="serverPath" editable="false"  layoutX="50.0" layoutY="31.0" prefHeight="25.0" prefWidth="291.0" />
+      <TextField fx:id="serverPath" editable="false" layoutX="50.0" layoutY="31.0" prefHeight="25.0" prefWidth="291.0" />
       <Button fx:id="serverFolderUpBtn" layoutX="26.0" layoutY="31.0" mnemonicParsing="false" text="^" />
       <Label layoutX="26.0" layoutY="14.0" prefHeight="17.0" prefWidth="314.0" text="Server" />
 
@@ -23,5 +21,9 @@
       <TextField fx:id="clientPath" editable="false" layoutX="560.0" layoutY="31.0" prefHeight="25.0" prefWidth="291.0" />
       <Button fx:id="clientFolderUpBtn" layoutX="536.0" layoutY="31.0" mnemonicParsing="false" text="^" />
       <Label layoutX="537.0" layoutY="14.0" prefHeight="17.0" prefWidth="314.0" text="Client" />
+      <Button fx:id="deleteBtn" layoutX="395.0" layoutY="250.0" mnemonicParsing="false" prefHeight="25.0" prefWidth="90.0" text="Delete" />
+
+<!--      <ContextMenu fx:id="contextMenu"/>-->
+
    </children>
 </Pane>

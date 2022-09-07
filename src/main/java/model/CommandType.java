@@ -6,6 +6,7 @@ public enum CommandType {
     UPLOAD_FILES,               //Command: send files from client to server
     DOWNLOAD_FILE,              //Command: send file from server to client
     DOWNLOAD_FILES,             //Command: send files from server to client
+    REPLACE_FILE,
     SERVER_DIR,                 //Command: send path of the current server directory
     SERVER_FILE,                //Command: send path of the current server directory
     OPEN_SERVER_FILE,           //Command: open directory or file from server

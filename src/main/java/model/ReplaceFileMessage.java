@@ -7,14 +7,14 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 
 @Data
-public class UploadFileMessage implements CloudMessage {
+public class ReplaceFileMessage implements CloudMessage {
 
     private final String fileName;
     private final String path;
     private final byte[] bytes;
 
 
-    public UploadFileMessage(Path path) throws IOException {
+    public ReplaceFileMessage(Path path) throws IOException {
         fileName = path.getFileName().toString();
         this.path = path.getParent().toString();
         bytes = Files.readAllBytes(path);
@@ -22,6 +22,6 @@ public class UploadFileMessage implements CloudMessage {
 
     @Override
     public CommandType getType() {
-        return CommandType.UPLOAD_FILE;
+        return CommandType.REPLACE_FILE;
     }
 }

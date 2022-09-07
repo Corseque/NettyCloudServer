@@ -40,8 +40,7 @@ public class LoginForm extends Network implements Initializable, CallbackToLogin
                 readThread.setDaemon(true);
                 readThread.start();
 
-                os.writeObject(new LoginMessage(login.getText(), password.getText()));
-                os.flush();
+                writeToServer(new LoginMessage(login.getText(), password.getText()));
             } catch (Exception ex) {
                 ex.printStackTrace();
             }
@@ -86,8 +85,7 @@ public class LoginForm extends Network implements Initializable, CallbackToLogin
             stage.setScene(new Scene(parent));
             stage.setTitle("Cloud storage");
             stage.show();
-            os.writeObject(new FilesListMessage(Path.of(rootDir)));
-            os.flush();
+            writeToServer(new FilesListMessage(Path.of(rootDir)));
         } catch (IOException ex) {
             ex.printStackTrace();
         }
@@ -95,7 +93,7 @@ public class LoginForm extends Network implements Initializable, CallbackToLogin
 
     @Override
     public void invalidLoginOrPassword() {
-        showAlert("Invalid login or password.");
+        showInfoAlert("Invalid login or password.");
 //        Alert invalidLoginOrPasswordAlert = new Alert(Alert.AlertType.NONE);
 //        invalidLoginOrPasswordAlert.setTitle("Invalid data");
 //        invalidLoginOrPasswordAlert.setContentText("Invalid login or password.");

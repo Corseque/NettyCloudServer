@@ -2,6 +2,7 @@ package server;
 
 import lombok.extern.slf4j.Slf4j;
 import model.NewUserMessage;
+import org.apache.commons.codec.digest.DigestUtils;
 
 import java.nio.file.Path;
 import java.sql.*;
@@ -203,8 +204,8 @@ public class MySQLAuthService extends SQLConfig {
                 ps.setString(2, fileName);
                 ps.setString(3, filePath);
                 ps.setString(4, fileKey);
-                ps.setString(5, new SimpleDateFormat("yyyy-MM-dd").format(new Date()));
-                ps.setString(6, "9999-01-01");
+                ps.setString(5, new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(new Date()));
+                ps.setString(6, "9999-01-01 00:00:00");
                 ps.executeUpdate();
             } catch (Exception ex) {
                 ex.printStackTrace();
@@ -217,15 +218,15 @@ public class MySQLAuthService extends SQLConfig {
                 ps.setString(1, fileName);
                 ps.setString(2, filePath);
                 ps.setString(3, fileKey);
-                ps.setString(4, new SimpleDateFormat("yyyy-MM-dd").format(new Date()));
-                ps.setString(5, "9999-01-01");
+                ps.setString(4, new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(new Date()));
+                ps.setString(5, "9999-01-01 00:00:00");
                 ps.executeUpdate();
             } catch (Exception ex) {
                 ex.printStackTrace();
             }
         }
         int userID = selectUserID(userLogin);
-        int fileID = selectFileID(fileKey);
+        int fileID = selectFileIDByKey(fileKey);
         if (userID !=0 && fileID != 0) {
             insert = "INSERT INTO " + USER_FILES_TABLE + " (" + USER_FILES_FILE_ID + ", " + USER_FILES_USER_OWNER
                     + ", " + USER_FILES_USER_RECEIVER
@@ -248,7 +249,7 @@ public class MySQLAuthService extends SQLConfig {
         return selectEntryID(select);
     }
 
-    private int selectFileID(String fileKey) {
+    private int selectFileIDByKey(String fileKey) {
         String select = "SELECT id FROM " + FILE_TABLE + " WHERE " + FILE_KEY + " = '" + fileKey + "';";
         return selectEntryID(select);
     }
@@ -274,7 +275,7 @@ public class MySQLAuthService extends SQLConfig {
                 + " LEFT JOIN " + FILE_TABLE
                 + " ON " + USER_FILES_FILE_ID + " = " + "id"
                 + " WHERE "
-                + USER_FILES_USER_OWNER + " = '" + userID + "';";
+                + USER_FILES_USER_OWNER + " = '" + userID + "' AND " + FILE_DELETE_DATE + " = '9999-01-01 00:00:00';";
         try (ResultSet rs = statement.executeQuery(select)) {
             while (rs.next()) {
                 if (Path.of(rs.getString(FILE_PATH)).compareTo(currentDir) == 0) {
@@ -287,5 +288,49 @@ public class MySQLAuthService extends SQLConfig {
         return files;
     }
 
+
+    public String findFileKey(String userLogin, String fileName) {
+        String select = "SELECT " + FILE_KEY + " FROM " + USER_FILES_TABLE
+                + " LEFT JOIN " + FILE_TABLE
+                + " ON " + USER_FILES_FILE_ID + " = id"
+                + " WHERE "
+                + USER_FILES_USER_OWNER + " = '" + selectUserID(userLogin) + "' AND " + FILE_NAME + " = '" + fileName + "';";
+        return selectStringEntry(select);
+    }
+
+    private String selectStringEntry(String select) {
+        try (ResultSet rs = statement.executeQuery(select)) {
+            if (rs.next()) {
+                return rs.getString(1);
+            } else {
+                return "";
+            }
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
+        return "";
+    }
+
+    public String markFileReplaced(String fileKey) {
+        String replaceDate = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(new Date());
+        String replacedFileKey = DigestUtils.md5Hex(fileKey + replaceDate);
+        String select = "SELECT " + FILE_UPLOAD_DATE + " FROM " +  USER_FILES_TABLE
+                + " LEFT JOIN " + FILE_TABLE
+                + " ON " + USER_FILES_FILE_ID + " = id"
+                + " WHERE "
+                + FILE_KEY + " = '" + fileKey + "' AND " + FILE_DELETE_DATE + " = '9999-01-01 00:00:00';";
+        String uploadDate = selectStringEntry(select);
+        String update = "UPDATE "
+                + FILE_TABLE
+                + " SET " + FILE_DELETE_DATE + " = '" + replaceDate + "', " + FILE_KEY + " = '" + replacedFileKey + "'"
+                + " WHERE "
+                + FILE_UPLOAD_DATE + " = '" + uploadDate + "' AND " + FILE_KEY + " = '" + fileKey + "';";
+        try {
+            statement.executeUpdate(update);
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return replacedFileKey;
+    }
 
 }

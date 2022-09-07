@@ -19,8 +19,17 @@ public class DownloadFileMessage implements CloudMessage {
         } else {
             bytes = null;
         }
-
     }
+
+    public DownloadFileMessage(Path path, String fileName) throws IOException {
+        this.fileName = fileName;
+        if (path.isAbsolute()) {
+            bytes = Files.readAllBytes(path);
+        } else {
+            bytes = null;
+        }
+    }
+
 
     @Override
     public CommandType getType() {

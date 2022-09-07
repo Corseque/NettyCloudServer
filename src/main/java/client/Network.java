@@ -6,6 +6,7 @@ import javafx.scene.control.Alert;
 import javafx.scene.control.ButtonType;
 import lombok.extern.slf4j.Slf4j;
 import model.CloudMessage;
+import model.ReplaceFileMessage;
 
 import java.io.IOException;
 import java.net.Socket;
@@ -43,12 +44,28 @@ public class Network {
         }
     }
 
-    protected Optional<ButtonType> showAlert(String message) {
+    protected Optional<ButtonType> showInfoAlert(String message) {
         Alert alert = new Alert(Alert.AlertType.NONE);
         alert.setTitle("Register information");
         alert.setContentText(message);
         alert.getDialogPane().getButtonTypes().add(ButtonType.OK);
         return alert.showAndWait();
+    }
+
+    protected Optional<ButtonType> showConfirmAlert(String message) {
+        Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
+        alert.setTitle("Register information");
+        alert.setContentText(message);
+        return alert.showAndWait();
+    }
+
+    protected void writeToServer(CloudMessage message) {
+        try {
+            os.writeObject(message);
+            os.flush();
+        } catch (IOException ex) {
+            ex.printStackTrace();
+        }
     }
 
 }
