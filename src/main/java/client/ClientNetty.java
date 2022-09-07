@@ -109,7 +109,6 @@ public class ClientNetty extends Network implements Initializable, CallbackToCli
                 ex.printStackTrace();
             }
         }
-        //todo сделать алерт с выбором да/нет и написать обработку на стороне клиента и сервера
     }
 
 //    private void initClientKeyListeners() {
@@ -228,7 +227,7 @@ public class ClientNetty extends Network implements Initializable, CallbackToCli
             }
         });
         createFolderBtn.setOnMouseClicked(e -> {
-            //todo понять как можно указать название папки (через всплявающее окно? или в режиме набора на листвью) и сделать обработку на клиенте и сервере
+            //todo понять как можно указать название папки (через всплывающее окно? или в режиме набора на листвью) и сделать обработку на клиенте и сервере
         });
         deleteBtn.setOnMouseClicked(e -> {
             //todo сделать обработку на клиенте и сервере удаления папки с файлами или файла
@@ -244,7 +243,6 @@ public class ClientNetty extends Network implements Initializable, CallbackToCli
             } catch (IOException ex) {
                 ex.printStackTrace();
             }
-
         });
     }
 

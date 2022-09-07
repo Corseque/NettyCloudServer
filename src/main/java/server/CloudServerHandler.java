@@ -52,6 +52,9 @@ public class CloudServerHandler extends SimpleChannelInboundHandler<CloudMessage
             case REPLACE_FILE:
                 processReplaceFileMessage((ReplaceFileMessage) cloudMessage, ctx);
                 break;
+            case DELETE_SERVER_FILE:
+                processDeleteServerFileMessage((DeleteServerFileMessage) cloudMessage, ctx);
+                break;
             case SERVER_DIR:
                 processServerDirMessage(Path.of(((ServerDirMessage) cloudMessage).getCurrentDir()), ctx);
                 break;
@@ -61,6 +64,20 @@ public class CloudServerHandler extends SimpleChannelInboundHandler<CloudMessage
             case LOGIN:
                 processLoginMessage((LoginMessage) cloudMessage, ctx);
                 break;
+        }
+    }
+
+    private void processDeleteServerFileMessage(DeleteServerFileMessage cloudMessage, ChannelHandlerContext ctx) throws IOException {
+        String fileKey = mySQL.findFileKey(userLogin, cloudMessage.getFileName());
+        if (fileKey != null) {
+            Path path = currentDir.resolve(fileKey);
+            if (!cloudMessage.isDirectory()) {
+                Files.deleteIfExists(path);
+                mySQL.markFileDeleted(fileKey);
+            } else {
+                //todo написать обработку удаления директории
+            }
+            sendList(ctx, Path.of(cloudMessage.getFolder()));
         }
     }
 
@@ -87,12 +104,11 @@ public class CloudServerHandler extends SimpleChannelInboundHandler<CloudMessage
             Files.write(currentDir.resolve(fileKey), cloudMessage.getBytes());
             ctx.writeAndFlush(new FilesListMessage(currentDir));
             mySQL.addFile(cloudMessage.getFileName(), currentDir.toString(), fileKey, userLogin);
-            sendList(ctx, Path.of(cloudMessage.getPath()));
+            sendList(ctx, Path.of(cloudMessage.getFolder()));
         } else {
             ctx.writeAndFlush(new AlertMessage("The file already exists. Do you want to replace the file?"));
         }
     }
-
 
     private void processReplaceFileMessage(ReplaceFileMessage cloudMessage, ChannelHandlerContext ctx) {
         String fileKey = DigestUtils.md5Hex(userLogin + cloudMessage.getFileName());

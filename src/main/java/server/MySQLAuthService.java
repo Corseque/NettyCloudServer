@@ -78,7 +78,6 @@ public class MySQLAuthService extends SQLConfig {
         return countOfEntries(select);
     }
 
-
     public void addNewUser(NewUserMessage cloudMessage) {
         String insert;
         if (countOfUsers() == 0) {
@@ -152,7 +151,6 @@ public class MySQLAuthService extends SQLConfig {
                 USER_LOGIN + " = '" + userLogin + "';";
         return isEntryExists(select);
     }
-
 
     public boolean isLoginSuccess(String userLogin, String userPassword) {
         String select = "SELECT COUNT(*) AS count from " + USER_TABLE +
@@ -288,13 +286,13 @@ public class MySQLAuthService extends SQLConfig {
         return files;
     }
 
-
     public String findFileKey(String userLogin, String fileName) {
         String select = "SELECT " + FILE_KEY + " FROM " + USER_FILES_TABLE
                 + " LEFT JOIN " + FILE_TABLE
                 + " ON " + USER_FILES_FILE_ID + " = id"
                 + " WHERE "
-                + USER_FILES_USER_OWNER + " = '" + selectUserID(userLogin) + "' AND " + FILE_NAME + " = '" + fileName + "';";
+                + USER_FILES_USER_OWNER + " = '" + selectUserID(userLogin) + "' AND " + FILE_NAME + " = '" + fileName +
+                "' AND " + FILE_DELETE_DATE + " = '9999-01-01 00:00:00';";
         return selectStringEntry(select);
     }
 
@@ -314,23 +312,37 @@ public class MySQLAuthService extends SQLConfig {
     public String markFileReplaced(String fileKey) {
         String replaceDate = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(new Date());
         String replacedFileKey = DigestUtils.md5Hex(fileKey + replaceDate);
-        String select = "SELECT " + FILE_UPLOAD_DATE + " FROM " +  USER_FILES_TABLE
-                + " LEFT JOIN " + FILE_TABLE
-                + " ON " + USER_FILES_FILE_ID + " = id"
-                + " WHERE "
-                + FILE_KEY + " = '" + fileKey + "' AND " + FILE_DELETE_DATE + " = '9999-01-01 00:00:00';";
+        String select = "SELECT " + FILE_UPLOAD_DATE + " FROM " +  USER_FILES_TABLE +
+                " LEFT JOIN " + FILE_TABLE +
+                " ON " + USER_FILES_FILE_ID + " = id" +
+                " WHERE " +
+                FILE_KEY + " = '" + fileKey + "' AND " + FILE_DELETE_DATE + " = '9999-01-01 00:00:00';";
         String uploadDate = selectStringEntry(select);
-        String update = "UPDATE "
-                + FILE_TABLE
-                + " SET " + FILE_DELETE_DATE + " = '" + replaceDate + "', " + FILE_KEY + " = '" + replacedFileKey + "'"
-                + " WHERE "
-                + FILE_UPLOAD_DATE + " = '" + uploadDate + "' AND " + FILE_KEY + " = '" + fileKey + "';";
+        String update = "UPDATE " +
+                FILE_TABLE +
+                " SET " + FILE_DELETE_DATE + " = '" + replaceDate + "', " + FILE_KEY + " = '" + replacedFileKey + "'" +
+                " WHERE " +
+                FILE_UPLOAD_DATE + " = '" + uploadDate + "' AND " + FILE_KEY + " = '" + fileKey + "';";
         try {
             statement.executeUpdate(update);
         } catch (SQLException e) {
             e.printStackTrace();
         }
         return replacedFileKey;
+    }
+
+    public void markFileDeleted(String fileKey) {
+        String deleteDate = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(new Date());
+        String deletedFileKey = DigestUtils.md5Hex(fileKey + deleteDate);
+        String update = "UPDATE " +
+                FILE_TABLE +
+                " SET " + FILE_DELETE_DATE + " = '" + deleteDate + "', " + FILE_KEY + " = '" + deletedFileKey + "'" +
+                " WHERE " +  FILE_KEY + " = '" + fileKey + "';";
+        try {
+            statement.executeUpdate(update);
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
     }
 
 }
