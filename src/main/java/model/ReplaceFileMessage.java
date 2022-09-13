@@ -10,14 +10,14 @@ import java.nio.file.Path;
 public class ReplaceFileMessage implements CloudMessage {
 
     private final String fileName;
-    private final String path;
     private final byte[] bytes;
+    private final String serverPath;
 
 
-    public ReplaceFileMessage(Path path) throws IOException {
+    public ReplaceFileMessage(Path path, Path serverFolder) throws IOException {
         fileName = path.getFileName().toString();
-        this.path = path.getParent().toString();
         bytes = Files.readAllBytes(path);
+        this.serverPath = serverFolder.toString();
     }
 
     @Override

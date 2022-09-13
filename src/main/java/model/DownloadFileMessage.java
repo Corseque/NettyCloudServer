@@ -11,23 +11,26 @@ public class DownloadFileMessage implements CloudMessage {
 
     private final String fileName;
     private final byte[] bytes;
+    private final String serverPath;
 
-    public DownloadFileMessage(Path path) throws IOException {
-        fileName = path.getFileName().toString();
-        if (path.isAbsolute()) {
-            bytes = Files.readAllBytes(path);
+    public DownloadFileMessage(Path serverPath) throws IOException {
+        fileName = serverPath.getFileName().toString();
+        if (serverPath.isAbsolute()) {
+            bytes = Files.readAllBytes(serverPath);
         } else {
             bytes = null;
         }
+        this.serverPath = serverPath.toString();
     }
 
-    public DownloadFileMessage(Path path, String fileName) throws IOException {
+    public DownloadFileMessage(Path serverPath, String fileName) throws IOException {
         this.fileName = fileName;
-        if (path.isAbsolute()) {
-            bytes = Files.readAllBytes(path);
+        if (serverPath.isAbsolute()) {
+            bytes = Files.readAllBytes(serverPath);
         } else {
             bytes = null;
         }
+        this.serverPath = serverPath.toString();
     }
 
 

@@ -19,7 +19,7 @@ public class CloudServerHandler extends SimpleChannelInboundHandler<CloudMessage
     private final MySQLAuthService mySQL;
     private String userLogin = "";
 
-    private Path currentDir;
+//    private Path currentDir;
 
     // ChannelHandlerContext ctx;
 
@@ -29,7 +29,7 @@ public class CloudServerHandler extends SimpleChannelInboundHandler<CloudMessage
     }
 
     public void channelActive(ChannelHandlerContext ctx) {
-        currentDir = rootDir;
+//        currentDir = rootDir;
     }
 
     @Override
@@ -55,6 +55,9 @@ public class CloudServerHandler extends SimpleChannelInboundHandler<CloudMessage
             case DELETE_SERVER_FILE:
                 processDeleteServerFileMessage((DeleteServerFileMessage) cloudMessage, ctx);
                 break;
+            case CREATE_SERVER_DIR:
+                processCreateServerDirMessage((CreateServerDirMessage) cloudMessage, ctx);
+                break;
             case SERVER_DIR:
                 processServerDirMessage(Path.of(((ServerDirMessage) cloudMessage).getCurrentDir()), ctx);
                 break;
@@ -67,78 +70,81 @@ public class CloudServerHandler extends SimpleChannelInboundHandler<CloudMessage
         }
     }
 
-    private void processDeleteServerFileMessage(DeleteServerFileMessage cloudMessage, ChannelHandlerContext ctx) throws IOException {
-        String fileKey = mySQL.findFileKey(userLogin, cloudMessage.getFileName());
+    private void sendList(ChannelHandlerContext ctx, Path serverPathMask) throws IOException {
+        ctx.writeAndFlush(new ServerDirMessage(serverPathMask));
+        ctx.writeAndFlush(new FilesListMessage(mySQL.userFiles(userLogin, serverPathMask), serverPathMask));
+    }
+
+    private void processDownloadFileMessage(DownloadFileMessage cloudMessage, ChannelHandlerContext ctx) throws IOException {
+        String fileName = cloudMessage.getFileName();
+        String fileKey = mySQL.findFileKey(userLogin, Path.of(cloudMessage.getServerPath()).resolve(Path.of(cloudMessage.getFileName())));
         if (fileKey != null) {
-            Path path = currentDir.resolve(fileKey);
-            if (!cloudMessage.isDirectory()) {
-                Files.deleteIfExists(path);
-                mySQL.markFileDeleted(fileKey);
-            } else {
-                //todo написать обработку удаления директории
-            }
-            sendList(ctx, Path.of(cloudMessage.getFolder()));
-        }
-    }
-
-    private Path revealPathMask(Path mask) {
-        Path dir;
-        int nameCount = mask.getNameCount();
-        if (nameCount > 1) {
-            dir = mask.subpath(1, nameCount);
-            return rootDir.resolve(dir);
+            Path path = rootDir.resolve(fileKey);
+            ctx.writeAndFlush(new DownloadFileMessage(path, fileName));
         } else {
-            return rootDir;
+            //todo сообщение пользователю, что файл не найден
+            //todo сделать корректный обработчик на стороне клиента
         }
-    }
-
-    private void sendList(ChannelHandlerContext ctx, Path dirMask) throws IOException {
-        ctx.writeAndFlush(new ServerDirMessage(dirMask));
-        currentDir = revealPathMask(dirMask);
-        ctx.writeAndFlush(new FilesListMessage(mySQL.userFiles(userLogin, currentDir), dirMask));
     }
 
     private void processUploadFileMessage(UploadFileMessage cloudMessage, ChannelHandlerContext ctx) throws IOException {
-        String fileKey = DigestUtils.md5Hex(userLogin + cloudMessage.getFileName());
+        String fileKey = DigestUtils.md5Hex(userLogin + cloudMessage.getServerPath() + cloudMessage.getFileName());
         if (!mySQL.isFileExists(fileKey)) {
-            Files.write(currentDir.resolve(fileKey), cloudMessage.getBytes());
-            ctx.writeAndFlush(new FilesListMessage(currentDir));
-            mySQL.addFile(cloudMessage.getFileName(), currentDir.toString(), fileKey, userLogin);
-            sendList(ctx, Path.of(cloudMessage.getFolder()));
+            Files.write(rootDir.resolve(fileKey), cloudMessage.getBytes());
+            mySQL.addFile(cloudMessage.getFileName(), cloudMessage.getServerPath(), fileKey, userLogin, true);
+            sendList(ctx, Path.of(cloudMessage.getServerPath()));
         } else {
-            ctx.writeAndFlush(new AlertMessage("The file already exists. Do you want to replace the file?"));
+            ctx.writeAndFlush(new ReplaceFileAlertMessage("The file already exists. Do you want to replace the file?"));
         }
     }
 
     private void processReplaceFileMessage(ReplaceFileMessage cloudMessage, ChannelHandlerContext ctx) {
-        String fileKey = DigestUtils.md5Hex(userLogin + cloudMessage.getFileName());
+        String fileKey = DigestUtils.md5Hex(userLogin + cloudMessage.getServerPath() + cloudMessage.getFileName());
         String replacedFileKey = mySQL.markFileReplaced(fileKey);
-        Path path = currentDir.resolve(fileKey);
+        Path path = rootDir.resolve(fileKey);
         try {
             Files.move(path, path.resolveSibling(replacedFileKey), StandardCopyOption.REPLACE_EXISTING);
             Files.write(path, cloudMessage.getBytes());
-            ctx.writeAndFlush(new FilesListMessage(currentDir));
-            mySQL.addFile(cloudMessage.getFileName(), currentDir.toString(), fileKey, userLogin);
-            sendList(ctx, Path.of(cloudMessage.getPath()));
+            mySQL.addFile(cloudMessage.getFileName(), cloudMessage.getServerPath(), fileKey, userLogin, true);
+            sendList(ctx, Path.of(cloudMessage.getServerPath()));
         } catch (IOException e) {
             e.printStackTrace();
         }
     }
 
-    private void processDownloadFileMessage(DownloadFileMessage cloudMessage, ChannelHandlerContext ctx) throws IOException {
-        String fileName = cloudMessage.getFileName();
-        Path path = currentDir.resolve(mySQL.findFileKey(userLogin, fileName));
-        ctx.writeAndFlush(new DownloadFileMessage(path, fileName));
+    private void processDeleteServerFileMessage(DeleteServerFileMessage cloudMessage, ChannelHandlerContext ctx) throws IOException {
+        String fileKey = mySQL.findFileKey(userLogin, Path.of(cloudMessage.getServerPath()).resolve(Path.of(cloudMessage.getFileName())));
+        if (fileKey != null) {
+            String deletedFileKey = mySQL.markFileDeleted(fileKey);
+            Path path = rootDir.resolve(fileKey);
+            if (!mySQL.isFolder(fileKey)) {
+                Files.move(path, path.resolveSibling(deletedFileKey), StandardCopyOption.REPLACE_EXISTING);
+            } else {
+                //todo написать обработку удаления директории
+                // написать проверку наличия файлов в директории, если есть, то спросить пользователя: удалить папку с файлами?
+            }
+            sendList(ctx, Path.of(cloudMessage.getServerPath()));
+        }
     }
 
-    private void processServerDirMessage(Path dirMask, ChannelHandlerContext ctx) throws IOException {
-        currentDir = revealPathMask(dirMask);
-        if (Files.isDirectory(currentDir)) {
-            if (rootDir.compareTo(currentDir) == 0 || rootDir.compareTo(currentDir) > 0) {
-                currentDir = rootDir;
-                sendList(ctx, dirMask);
+    private void processCreateServerDirMessage(CreateServerDirMessage cloudMessage, ChannelHandlerContext ctx) throws IOException {
+        String folderKey = DigestUtils.md5Hex(userLogin + cloudMessage.getServerPath() + cloudMessage.getFolderName());
+        if (!mySQL.isFileExists(folderKey)) {
+            mySQL.addFile(cloudMessage.getFolderName(), cloudMessage.getServerPath(), folderKey, userLogin, false);
+            sendList(ctx, Path.of(cloudMessage.getServerPath()));
+        } else {
+            ctx.writeAndFlush(new CreateServerDirAlertMessage("The folder with this name already exists. Specify another folder name?"));
+        }
+    }
+
+    private void processServerDirMessage(Path serverPathMask, ChannelHandlerContext ctx) throws IOException {
+        //todo нужно написать отправку содержимого папки клиенту, если это папка
+        String folderKey = mySQL.findFileKey(userLogin, serverPathMask);
+        if (folderKey != null || serverPathMask.compareTo(Path.of(userLogin)) == 0) {
+            if (mySQL.isFolder(folderKey) || serverPathMask.compareTo(Path.of(userLogin)) == 0) {
+                sendList(ctx, serverPathMask);
             } else {
-                sendList(ctx, dirMask);
+                //todo 3.2. вопрос клиенту: вы хотите скачать (?и открыть?) файл?
             }
         }
     }
@@ -169,6 +175,5 @@ public class CloudServerHandler extends SimpleChannelInboundHandler<CloudMessage
         }
         ctx.writeAndFlush(new NewUserMessage(cloudMessage));
     }
-
 
 }

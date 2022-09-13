@@ -10,14 +10,14 @@ import java.nio.file.Path;
 public class UploadFileMessage implements CloudMessage {
 
     private final String fileName;
-    private final String folder;
     private final byte[] bytes;
+    private final String serverPath;
 
 
-    public UploadFileMessage(Path folder) throws IOException {
-        fileName = folder.getFileName().toString();
-        this.folder = folder.getParent().toString();
-        bytes = Files.readAllBytes(folder);
+    public UploadFileMessage(Path userPath, Path serverFolder) throws IOException {
+        fileName = userPath.getFileName().toString();
+        bytes = Files.readAllBytes(userPath);
+        this.serverPath = serverFolder.toString();
     }
 
     @Override

@@ -4,9 +4,9 @@ import io.netty.handler.codec.serialization.ObjectDecoderInputStream;
 import io.netty.handler.codec.serialization.ObjectEncoderOutputStream;
 import javafx.scene.control.Alert;
 import javafx.scene.control.ButtonType;
+import javafx.scene.control.TextInputDialog;
 import lombok.extern.slf4j.Slf4j;
 import model.CloudMessage;
-import model.ReplaceFileMessage;
 
 import java.io.IOException;
 import java.net.Socket;
@@ -66,6 +66,14 @@ public class Network {
         } catch (IOException ex) {
             ex.printStackTrace();
         }
+    }
+
+    protected Optional<String> enterFolderNameDialog() {
+        TextInputDialog inputDialog = new TextInputDialog();
+       // inputDialog.setContentText("Folder name:: ");
+        inputDialog.setHeaderText("Enter folder name:");
+//        inputDialog.showAndWait();
+        return inputDialog.showAndWait();
     }
 
 }

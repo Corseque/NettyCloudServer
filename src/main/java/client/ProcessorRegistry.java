@@ -93,9 +93,13 @@ public class ProcessorRegistry {
                 Platform.runLater(() -> callbackLogin.invalidLoginOrPassword());
             }
         });
-        map.put(CommandType.ALERT, msg -> {
-            AlertMessage message = (AlertMessage) msg;
-            Platform.runLater(() -> callbackClient.processAlert(message.getAlert()));
+        map.put(CommandType.ALERT_REPLACE_FILE, msg -> {
+            ReplaceFileAlertMessage message = (ReplaceFileAlertMessage) msg;
+            Platform.runLater(() -> callbackClient.processReplaceFileAlert(message.getAlert()));
+        });
+        map.put(CommandType.ALERT_CREATE_SERVER_DIR, msg -> {
+            CreateServerDirAlertMessage message = (CreateServerDirAlertMessage) msg;
+            Platform.runLater(() -> callbackClient.processCreateServerDirAlert(message.getAlert()));
         });
     }
 
