@@ -8,13 +8,11 @@ import java.nio.file.Path;
 @Data
 public class DeleteServerFileMessage  implements CloudMessage {
     private final String fileName;
-    private final boolean isDirectory;
-    private final String folder;
+    private final String serverPath;
 
-    public DeleteServerFileMessage(Path folder) throws IOException {
-        fileName = folder.getFileName().toString();
-        isDirectory = folder.toFile().isDirectory();
-        this.folder = folder.getParent().toString();
+    public DeleteServerFileMessage(Path path) throws IOException {
+        fileName = path.getFileName().toString();
+        serverPath = path.getParent().toString();
     }
 
     @Override

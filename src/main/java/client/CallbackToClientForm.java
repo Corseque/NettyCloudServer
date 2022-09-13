@@ -8,6 +8,7 @@ public interface CallbackToClientForm {
     void updateClientView();  // DOWNLOAD_FILE
     void setServerPath(String svrPath); // SERVER_DIR
     Path getClientDir();
-    void processAlert(String alert);
+    void processReplaceFileAlert(String alert);
+    void processCreateServerDirAlert(String alert);
 
 }

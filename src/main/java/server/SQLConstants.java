@@ -15,8 +15,12 @@ public class SQLConstants {
     public static final String FILE_NAME = "file_name";
     public static final String FILE_PATH = "file_path";
     public static final String FILE_KEY = "file_key";
+    public static final String FILE_TYPE = "file_type";
+    public static final String FILE_TYPE_FILE = "file";
+    public static final String FILE_TYPE_FOLDER = "folder";
     public static final String FILE_UPLOAD_DATE = "upload_date";
     public static final String FILE_DELETE_DATE = "delete_date";
+    public static final String FILE_BASE_DELETE_DATE = "9999-01-01 00:00:00";
 
     public static final String USER_FILES_TABLE = "user_files";
     public static final String USER_FILES_FILE_ID = "id_file";

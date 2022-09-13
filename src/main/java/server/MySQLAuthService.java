@@ -191,33 +191,59 @@ public class MySQLAuthService extends SQLConfig {
         return isEntryExists(select);
     }
 
-    public void addFile(String fileName, String filePath, String fileKey, String userLogin) {
+//    public boolean isFolderExists(Path path, String userLogin) {
+//        String fileName = path.getFileName().toString();
+//        String serverPath = path.getParent().toString();
+//        String select = "SELECT " + FILE_KEY + " FROM " + USER_FILES_TABLE
+//                + " LEFT JOIN " + FILE_TABLE
+//                + " ON " + USER_FILES_FILE_ID + " = id"
+//                + " WHERE "
+//                + USER_FILES_USER_OWNER + " = '" + selectUserID(userLogin) + "' AND " + FILE_NAME + " = '" + fileName +
+//                "' AND " + FILE_DELETE_DATE + " = '9999-01-01 00:00:00';";
+//        return isEntryExists(select);
+//    }
+
+    public boolean isFolder(String fileKey) {
+        String select = "SELECT " + FILE_TYPE + " FROM " + FILE_TABLE +
+                " WHERE " +
+                FILE_KEY + " = '" + fileKey + "' AND " +FILE_DELETE_DATE + " = '" + FILE_BASE_DELETE_DATE + "';";
+        try (ResultSet rs = statement.executeQuery(select)) {
+            if (rs.next()) {
+                return rs.getString(1).equals(FILE_TYPE_FOLDER);
+            }
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
+        return false;
+    }
+
+    public void addFile(String fileName, String filePath, String fileKey, String userLogin, boolean isFile) {
         String insert;
         if (countOfFiles() == 0) {
-            insert = "INSERT INTO " + FILE_TABLE + " (id, " + FILE_NAME + ", " + FILE_PATH + ", " + FILE_KEY
-                    + ", " + FILE_UPLOAD_DATE + ", " + FILE_DELETE_DATE
-                    + ") VALUES (?, ?, ?, ?, ?, ?);";
+            insert = "INSERT INTO " + FILE_TABLE + " (id, " + FILE_NAME + ", " + FILE_PATH + ", " + FILE_KEY  + ", " +
+                    FILE_TYPE + ", " + FILE_UPLOAD_DATE + ", " + FILE_DELETE_DATE + ") VALUES (?, ?, ?, ?, ?, ?, ?);";
             try (PreparedStatement ps = connection.prepareStatement(insert)) {
                 ps.setInt(1, 1);
                 ps.setString(2, fileName);
                 ps.setString(3, filePath);
                 ps.setString(4, fileKey);
-                ps.setString(5, new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(new Date()));
-                ps.setString(6, "9999-01-01 00:00:00");
+                ps.setString(5, isFile ? FILE_TYPE_FILE : FILE_TYPE_FOLDER);
+                ps.setString(6, new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(new Date()));
+                ps.setString(7, FILE_BASE_DELETE_DATE);
                 ps.executeUpdate();
             } catch (Exception ex) {
                 ex.printStackTrace();
             }
         } else {
-            insert = "INSERT INTO " + FILE_TABLE + " (" + FILE_NAME + ", " + FILE_PATH + ", " + FILE_KEY
-                    + ", " + FILE_UPLOAD_DATE + ", " + FILE_DELETE_DATE
-                    + ") VALUES (?, ?, ?, ?, ?);";
+            insert = "INSERT INTO " + FILE_TABLE + " (" + FILE_NAME + ", " + FILE_PATH + ", " + FILE_KEY + ", " +
+                    FILE_TYPE + ", " + FILE_UPLOAD_DATE + ", " + FILE_DELETE_DATE + ") VALUES (?, ?, ?, ?, ?, ?);";
             try (PreparedStatement ps = connection.prepareStatement(insert)) {
                 ps.setString(1, fileName);
                 ps.setString(2, filePath);
                 ps.setString(3, fileKey);
-                ps.setString(4, new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(new Date()));
-                ps.setString(5, "9999-01-01 00:00:00");
+                ps.setString(4, isFile ? FILE_TYPE_FILE : FILE_TYPE_FOLDER);
+                ps.setString(5, new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(new Date()));
+                ps.setString(6, FILE_BASE_DELETE_DATE);
                 ps.executeUpdate();
             } catch (Exception ex) {
                 ex.printStackTrace();
@@ -286,14 +312,24 @@ public class MySQLAuthService extends SQLConfig {
         return files;
     }
 
-    public String findFileKey(String userLogin, String fileName) {
-        String select = "SELECT " + FILE_KEY + " FROM " + USER_FILES_TABLE
+    public String findFileKey(String userLogin, Path serverPath) {
+        String fileName = serverPath.getFileName().toString();
+        String select = "SELECT " + FILE_KEY + ", " + FILE_PATH + " FROM " + USER_FILES_TABLE
                 + " LEFT JOIN " + FILE_TABLE
                 + " ON " + USER_FILES_FILE_ID + " = id"
                 + " WHERE "
                 + USER_FILES_USER_OWNER + " = '" + selectUserID(userLogin) + "' AND " + FILE_NAME + " = '" + fileName +
                 "' AND " + FILE_DELETE_DATE + " = '9999-01-01 00:00:00';";
-        return selectStringEntry(select);
+        try (ResultSet rs = statement.executeQuery(select)) {
+            while (rs.next()) {
+                if (Path.of(rs.getString(FILE_PATH)).compareTo(serverPath.getParent()) == 0) {
+                    return rs.getString(FILE_KEY);
+                }
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return null;
     }
 
     private String selectStringEntry(String select) {
@@ -301,17 +337,17 @@ public class MySQLAuthService extends SQLConfig {
             if (rs.next()) {
                 return rs.getString(1);
             } else {
-                return "";
+                return null;
             }
         } catch (Exception ex) {
             ex.printStackTrace();
         }
-        return "";
+        return null;
     }
 
     public String markFileReplaced(String fileKey) {
         String replaceDate = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(new Date());
-        String replacedFileKey = DigestUtils.md5Hex(fileKey + replaceDate);
+        String replacedFileKey = "replaced " + fileKey;
         String select = "SELECT " + FILE_UPLOAD_DATE + " FROM " +  USER_FILES_TABLE +
                 " LEFT JOIN " + FILE_TABLE +
                 " ON " + USER_FILES_FILE_ID + " = id" +
@@ -331,9 +367,9 @@ public class MySQLAuthService extends SQLConfig {
         return replacedFileKey;
     }
 
-    public void markFileDeleted(String fileKey) {
+    public String markFileDeleted(String fileKey) {
         String deleteDate = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(new Date());
-        String deletedFileKey = DigestUtils.md5Hex(fileKey + deleteDate);
+        String deletedFileKey = "deleted " + fileKey ;
         String update = "UPDATE " +
                 FILE_TABLE +
                 " SET " + FILE_DELETE_DATE + " = '" + deleteDate + "', " + FILE_KEY + " = '" + deletedFileKey + "'" +
@@ -343,6 +379,7 @@ public class MySQLAuthService extends SQLConfig {
         } catch (SQLException e) {
             e.printStackTrace();
         }
+        return deletedFileKey;
     }
 
 }
