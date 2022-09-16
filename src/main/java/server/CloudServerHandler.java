@@ -10,6 +10,8 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
+import java.util.Iterator;
+
 
 //обработчик входящих сообщений от клиента
 
@@ -58,6 +60,9 @@ public class CloudServerHandler extends SimpleChannelInboundHandler<CloudMessage
             case CREATE_SERVER_DIR:
                 processCreateServerDirMessage((CreateServerDirMessage) cloudMessage, ctx);
                 break;
+            case DELETE_SERVER_DIR:
+                processDeleteServerDirMessage((DeleteServerDirMessage) cloudMessage, ctx);
+                break;
             case SERVER_DIR:
                 processServerDirMessage(Path.of(((ServerDirMessage) cloudMessage).getCurrentDir()), ctx);
                 break;
@@ -77,13 +82,14 @@ public class CloudServerHandler extends SimpleChannelInboundHandler<CloudMessage
 
     private void processDownloadFileMessage(DownloadFileMessage cloudMessage, ChannelHandlerContext ctx) throws IOException {
         String fileName = cloudMessage.getFileName();
-        String fileKey = mySQL.findFileKey(userLogin, Path.of(cloudMessage.getServerPath()).resolve(Path.of(cloudMessage.getFileName())));
+        Path cloudMessagePath = Path.of(cloudMessage.getServerPath()).resolve(Path.of(cloudMessage.getFileName()));
+        String fileKey = mySQL.findFileKey(userLogin, cloudMessagePath);
         if (fileKey != null) {
-            Path path = rootDir.resolve(fileKey);
-            ctx.writeAndFlush(new DownloadFileMessage(path, fileName));
-        } else {
-            //todo сообщение пользователю, что файл не найден
-            //todo сделать корректный обработчик на стороне клиента
+            if (!mySQL.isFolder(fileKey)) {
+                ctx.writeAndFlush(new DownloadFileMessage(rootDir.resolve(fileKey), fileName, Path.of(cloudMessage.getClientPath())));
+            } else {
+                ctx.writeAndFlush(new DownloadDirMessage(cloudMessagePath, mySQL.userFiles(userLogin, cloudMessagePath), Path.of(cloudMessage.getClientPath())));
+            }
         }
     }
 
@@ -113,18 +119,31 @@ public class CloudServerHandler extends SimpleChannelInboundHandler<CloudMessage
     }
 
     private void processDeleteServerFileMessage(DeleteServerFileMessage cloudMessage, ChannelHandlerContext ctx) throws IOException {
-        String fileKey = mySQL.findFileKey(userLogin, Path.of(cloudMessage.getServerPath()).resolve(Path.of(cloudMessage.getFileName())));
+        Path cloudMessagePath = Path.of(cloudMessage.getServerPath()).resolve(Path.of(cloudMessage.getFileName()));
+        String fileKey = mySQL.findFileKey(userLogin, cloudMessagePath);
         if (fileKey != null) {
-            String deletedFileKey = mySQL.markFileDeleted(fileKey);
-            Path path = rootDir.resolve(fileKey);
             if (!mySQL.isFolder(fileKey)) {
-                Files.move(path, path.resolveSibling(deletedFileKey), StandardCopyOption.REPLACE_EXISTING);
+                Path rootPath = rootDir.resolve(fileKey);
+                String deletedFileKey = mySQL.markFileDeleted(fileKey);
+                Files.move(rootPath, rootPath.resolveSibling(deletedFileKey), StandardCopyOption.REPLACE_EXISTING);
             } else {
-                //todo написать обработку удаления директории
-                // написать проверку наличия файлов в директории, если есть, то спросить пользователя: удалить папку с файлами?
+                ctx.writeAndFlush(new DeleteServerDirAlertMessage("A you sure you want to delete folder: " + cloudMessage.getFileName() + "?"));
             }
             sendList(ctx, Path.of(cloudMessage.getServerPath()));
         }
+    }
+
+    private void processDeleteServerDirMessage(DeleteServerDirMessage cloudMessage, ChannelHandlerContext ctx) throws IOException {
+        Path cloudMessagePath = Path.of(cloudMessage.getServerPath()).resolve(Path.of(cloudMessage.getFolderName()));
+        String fileKey = mySQL.findFileKey(userLogin, cloudMessagePath);
+        mySQL.markFileDeleted(fileKey);
+        for (String s : mySQL.userFileKeys(userLogin, cloudMessagePath)) {
+            fileKey = s;
+            String deletedFileKey = mySQL.markFileDeleted(fileKey);
+            Path rootPath = rootDir.resolve(fileKey);
+            Files.move(rootPath, rootPath.resolveSibling(deletedFileKey), StandardCopyOption.REPLACE_EXISTING);
+        }
+        sendList(ctx, Path.of(cloudMessage.getServerPath()));
     }
 
     private void processCreateServerDirMessage(CreateServerDirMessage cloudMessage, ChannelHandlerContext ctx) throws IOException {
@@ -138,13 +157,12 @@ public class CloudServerHandler extends SimpleChannelInboundHandler<CloudMessage
     }
 
     private void processServerDirMessage(Path serverPathMask, ChannelHandlerContext ctx) throws IOException {
-        //todo нужно написать отправку содержимого папки клиенту, если это папка
         String folderKey = mySQL.findFileKey(userLogin, serverPathMask);
         if (folderKey != null || serverPathMask.compareTo(Path.of(userLogin)) == 0) {
             if (mySQL.isFolder(folderKey) || serverPathMask.compareTo(Path.of(userLogin)) == 0) {
                 sendList(ctx, serverPathMask);
             } else {
-                //todo 3.2. вопрос клиенту: вы хотите скачать (?и открыть?) файл?
+                //todo вопрос клиенту: вы хотите скачать (?и открыть?) файл?
             }
         }
     }
