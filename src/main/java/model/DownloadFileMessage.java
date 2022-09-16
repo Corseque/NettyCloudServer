@@ -12,18 +12,20 @@ public class DownloadFileMessage implements CloudMessage {
     private final String fileName;
     private final byte[] bytes;
     private final String serverPath;
+    private final String clientPath;
 
-    public DownloadFileMessage(Path serverPath) throws IOException {
+    public DownloadFileMessage(Path serverPath, Path clientPath) throws IOException {
         fileName = serverPath.getFileName().toString();
         if (serverPath.isAbsolute()) {
             bytes = Files.readAllBytes(serverPath);
         } else {
             bytes = null;
         }
-        this.serverPath = serverPath.toString();
+        this.serverPath = serverPath.getParent().toString();
+        this.clientPath = clientPath.toString();
     }
 
-    public DownloadFileMessage(Path serverPath, String fileName) throws IOException {
+    public DownloadFileMessage(Path serverPath, String fileName, Path clientPath) throws IOException {
         this.fileName = fileName;
         if (serverPath.isAbsolute()) {
             bytes = Files.readAllBytes(serverPath);
@@ -31,6 +33,7 @@ public class DownloadFileMessage implements CloudMessage {
             bytes = null;
         }
         this.serverPath = serverPath.toString();
+        this.clientPath = clientPath.toString();
     }
 
 

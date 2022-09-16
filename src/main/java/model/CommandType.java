@@ -5,7 +5,7 @@ public enum CommandType {
     UPLOAD_FILE,                //Command: send file from client to server
     UPLOAD_FILES,               //Command: send files from client to server
     DOWNLOAD_FILE,              //Command: send file from server to client
-    DOWNLOAD_FILES,             //Command: send files from server to client
+    DOWNLOAD_DIR,             //Command: send files from server to client
     REPLACE_FILE,
     SERVER_DIR,                 //Command: send path of the current server directory
     CREATE_SERVER_DIR,
@@ -22,6 +22,7 @@ public enum CommandType {
     NEW_USER_REGISTERED,          //Command: new user registered confirmation
     LOGIN,
     ALERT_REPLACE_FILE,
-    ALERT_CREATE_SERVER_DIR
+    ALERT_CREATE_SERVER_DIR,
+    ALERT_DELETE_SERVER_DIR
 }
 

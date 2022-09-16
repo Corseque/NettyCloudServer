@@ -7,9 +7,8 @@ import org.apache.commons.codec.digest.DigestUtils;
 import java.nio.file.Path;
 import java.sql.*;
 import java.text.SimpleDateFormat;
-import java.util.ArrayList;
+import java.util.*;
 import java.util.Date;
-import java.util.List;
 
 import static server.SQLConstants.*;
 
@@ -304,6 +303,47 @@ public class MySQLAuthService extends SQLConfig {
             while (rs.next()) {
                 if (Path.of(rs.getString(FILE_PATH)).compareTo(currentDir) == 0) {
                     files.add(rs.getString(FILE_NAME));
+                }
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return files;
+    }
+
+    public List<String> userFileKeys(String userLogin, Path currentDir) {
+        List<String> files = new ArrayList<>();
+        int userID = selectUserID(userLogin);
+
+        String select = "SELECT " + FILE_KEY + ", " + FILE_PATH + " FROM " + USER_FILES_TABLE
+                + " LEFT JOIN " + FILE_TABLE
+                + " ON " + USER_FILES_FILE_ID + " = " + "id"
+                + " WHERE "
+                + USER_FILES_USER_OWNER + " = '" + userID + "' AND " + FILE_DELETE_DATE + " = '9999-01-01 00:00:00';";
+        try (ResultSet rs = statement.executeQuery(select)) {
+            while (rs.next()) {
+                if (Path.of(rs.getString(FILE_PATH)).compareTo(currentDir) == 0) {
+                    files.add(rs.getString(FILE_KEY));
+                }
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return files;
+    }
+
+    public Map<String,String> userFileNamesAndKeys(String userLogin, Path currentDir){
+        Map<String,String> files = new HashMap<>();
+        int userID = selectUserID(userLogin);
+        String select = "SELECT " + FILE_KEY + ", " + FILE_NAME + "," + FILE_PATH + " FROM " + USER_FILES_TABLE
+                + " LEFT JOIN " + FILE_TABLE
+                + " ON " + USER_FILES_FILE_ID + " = " + "id"
+                + " WHERE "
+                + USER_FILES_USER_OWNER + " = '" + userID + "' AND " + FILE_DELETE_DATE + " = '9999-01-01 00:00:00';";
+        try (ResultSet rs = statement.executeQuery(select)) {
+            while (rs.next()) {
+                if (Path.of(rs.getString(FILE_PATH)).compareTo(currentDir) == 0) {
+                    files.put(rs.getString(FILE_KEY), rs.getString(FILE_NAME));
                 }
             }
         } catch (SQLException e) {

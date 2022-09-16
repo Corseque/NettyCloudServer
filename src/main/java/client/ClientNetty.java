@@ -6,6 +6,7 @@ import javafx.scene.control.*;
 import javafx.scene.control.Button;
 import javafx.scene.control.MenuItem;
 import javafx.scene.control.TextField;
+import javafx.scene.input.KeyCode;
 import lombok.extern.slf4j.Slf4j;
 import model.*;
 
@@ -14,6 +15,7 @@ import java.io.IOException;
 import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Optional;
 import java.util.ResourceBundle;
@@ -39,7 +41,6 @@ public class ClientNetty extends Network implements Initializable, CallbackToCli
     public MenuItem deleteFileItem = new MenuItem("Delete file");
     public MenuItem createFolderItem = new MenuItem("Create folder");
     public MenuItem deleteFolderItem = new MenuItem("Delete folder");
-
 
 
     private Path clientDir;
@@ -94,20 +95,64 @@ public class ClientNetty extends Network implements Initializable, CallbackToCli
     }
 
     @Override
-    public Path getClientDir() {
-        return clientDir;
-    }
-
-    @Override
-    public void processAlert(String alert) {
+    public void processReplaceFileAlert(String alert) {
         Optional<ButtonType> result = showConfirmAlert(alert);
-        if (result.get() == ButtonType.OK) {
+        ButtonType bt = result.orElse(ButtonType.CANCEL);
+        if (bt == ButtonType.OK) {
             try {
                 String fileName = clientView.getSelectionModel().getSelectedItem();
-                writeToServer(new ReplaceFileMessage(clientDir.resolve(fileName)));
+                writeToServer(new ReplaceFileMessage(clientDir.resolve(fileName), Path.of(serverPath.getText())));
             } catch (IOException ex) {
                 ex.printStackTrace();
             }
+        }
+    }
+
+    @Override
+    public void processCreateServerDirAlert(String alert) {
+        Optional<ButtonType> result = showConfirmAlert(alert);
+        ButtonType bt = result.orElse(ButtonType.CANCEL);
+        if (bt == ButtonType.OK) {
+            createFolder();
+        }
+    }
+
+    @Override
+    public void processDeleteServerDirAlert(String alert) {
+        Optional<ButtonType> result = showConfirmAlert(alert);
+        ButtonType bt = result.orElse(ButtonType.CANCEL);
+        if (bt == ButtonType.OK) {
+            try {
+                writeToServer(new DeleteServerDirMessage(Path.of(serverPath.getText()).resolve(Path.of(serverView.getSelectionModel().getSelectedItem()))));
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+    }
+
+//    @Override
+//    public void downloadFolderFiles(String sPath, String folderName, List<String> files) {
+//        try {
+//            //todo проверка на наличие папки с таким же названием, если есть сделать с номером (1), (2) ...
+//            Path cPath = Path.of(clientPath.getText()).resolve(Path.of(folderName));
+//            Files.createDirectory(cPath);
+//            Platform.runLater(this::updateClientView);
+//            Iterator<String> iterator = files.iterator();
+//            while (iterator.hasNext()) {
+//                Path path = Path.of(sPath).resolve(Path.of(folderName)).resolve(iterator.next());
+//                writeToServer(new DownloadFileMessage(path, cPath));
+//            }
+//        } catch (IOException e) {
+//            e.printStackTrace();
+//        }
+//    }
+
+    @Override
+    public void downloadFolderFiles(Path sPath, Path cPath) {
+        try {
+            writeToServer(new DownloadFileMessage(sPath, cPath));
+        } catch (IOException e) {
+            e.printStackTrace();
         }
     }
 
@@ -170,13 +215,33 @@ public class ClientNetty extends Network implements Initializable, CallbackToCli
                 }
             }
         });
+        serverView.setOnKeyReleased(e -> {
+            if (e.getCode() == KeyCode.DELETE) {
+                try {
+                    writeToServer(new DeleteServerFileMessage(Path.of(serverPath.getText()).resolve(Path.of(serverView.getSelectionModel().getSelectedItem()))));
+                } catch (IOException ex) {
+                    ex.printStackTrace();
+                }
+            }
+        });
+        clientView.setOnKeyReleased(e -> {
+            if (e.getCode() == KeyCode.DELETE) {
+                try {
+                    Path path = Path.of(clientPath.getText()).resolve(Path.of(clientView.getSelectionModel().getSelectedItem()));
+                    Files.deleteIfExists(path);
+                    Platform.runLater(this::updateClientView);
+                } catch (IOException ex) {
+                    ex.printStackTrace();
+                }
+            }
+        });
         clientView.setOnContextMenuRequested(e -> {
             contextMenuClient.show(clientView, e.getScreenX(), e.getScreenY());
         });
         serverView.setOnContextMenuRequested(e -> {
             contextMenuServer.show(serverView, e.getScreenX(), e.getScreenY());
         });
-        uploadItem.setOnAction(e ->{
+        uploadItem.setOnAction(e -> {
             uploadFile();
         });
         createFolderItem.setOnAction(event -> {
@@ -214,45 +279,44 @@ public class ClientNetty extends Network implements Initializable, CallbackToCli
         });
         downloadBtn.setOnMouseClicked(e -> {
             try {
-                String currentDir = serverPath.getText();
-                String fileName = serverView.getSelectionModel().getSelectedItem();
-                Path path = Path.of(currentDir).resolve(Path.of(fileName));
-                if (!Files.isDirectory(path)) {
-                    writeToServer(new DownloadFileMessage(path));
-                } else {
-                    //todo сделать обработку на клиенте и сервере скачивания папки с файлами
-                }
+                Path sPath = Path.of(serverPath.getText()).resolve(Path.of(serverView.getSelectionModel().getSelectedItem()));
+                Path cPath = Path.of(clientPath.getText());
+                writeToServer(new DownloadFileMessage(sPath, cPath));
             } catch (IOException ex) {
                 ex.printStackTrace();
             }
         });
         createFolderBtn.setOnMouseClicked(e -> {
             //todo понять как можно указать название папки (через всплывающее окно? или в режиме набора на листвью) и сделать обработку на клиенте и сервере
+            createFolder();
         });
         deleteBtn.setOnMouseClicked(e -> {
-            //todo сделать обработку на клиенте и сервере удаления папки с файлами или файла
-            try {
-                String currentDir = serverPath.getText();
-                String fileName = serverView.getSelectionModel().getSelectedItem();
-                Path path = Path.of(currentDir).resolve(Path.of(fileName));
-                if (!Files.isDirectory(path)) {
-                    writeToServer(new DeleteServerFileMessage(path));
-                } else {
-                    //todo сделать обработку на клиенте и сервере удаления папки с файлами
+                try {
+                    writeToServer(new DeleteServerFileMessage(Path.of(serverPath.getText()).resolve(Path.of(serverView.getSelectionModel().getSelectedItem()))));
+                } catch (IOException ex) {
+                    ex.printStackTrace();
                 }
-            } catch (IOException ex) {
-                ex.printStackTrace();
-            }
         });
     }
 
     private void uploadFile() {
         try {
             String fileName = clientView.getSelectionModel().getSelectedItem();
-            writeToServer(new UploadFileMessage(clientDir.resolve(fileName)));
+            writeToServer(new UploadFileMessage(clientDir.resolve(fileName), Path.of(serverPath.getText())));
         } catch (IOException ex) {
             ex.printStackTrace();
         }
+    }
+
+    private void createFolder() {
+        String currentDir = serverPath.getText();
+        Optional<String> name = enterFolderNameDialog();
+        String folderName = name.orElse("");
+        if (!folderName.equals("")) {
+            Path path = Path.of(currentDir).resolve(Path.of(folderName));
+            writeToServer(new CreateServerDirMessage(path));
+        }
+
     }
 
     private String getItem() {

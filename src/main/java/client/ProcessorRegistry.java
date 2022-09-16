@@ -9,6 +9,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.Map;
 
 //обработчик входящих сообщений от сервера
@@ -49,12 +50,35 @@ public class ProcessorRegistry {
 //        map.put(CommandType.UPLOAD_FILES, msg -> {});
         map.put(CommandType.DOWNLOAD_FILE, msg -> {
             DownloadFileMessage message = (DownloadFileMessage) msg;
-            Path path = callbackClient.getClientDir().resolve(message.getFileName());
+            Path path = Path.of(message.getClientPath()).resolve(message.getFileName());
             Files.write(path, message.getBytes());
             Platform.runLater(() -> callbackClient.updateClientView());
 
         });
-//        map.put(CommandType.DOWNLOAD_FILES, msg -> {});
+        map.put(CommandType.DOWNLOAD_DIR, msg -> {
+            DownloadDirMessage message = (DownloadDirMessage) msg;
+//            callbackClient.downloadFolderFiles(message.getServerPath(), message.getFolderName(), message.getFiles());
+            try {
+                Path cPath = Path.of(message.getClientPath()).resolve(Path.of(message.getFolderName()));
+                if (Files.exists(cPath)) {
+                    Path path;
+                    int n = 0;
+                    do {
+                        n++;
+                        path = cPath.getParent().resolve(Path.of(cPath.getFileName().toString() + " (" + n + ")"));
+                    } while (Files.exists(path));
+                    cPath = path;
+                }
+                Path sPath = Path.of(message.getServerPath()).resolve(message.getFolderName());
+                Files.createDirectory(cPath);
+                Platform.runLater(() -> callbackClient.updateClientView());
+                for (String s : message.getFiles()) {
+                    callbackClient.downloadFolderFiles(sPath.resolve(s), cPath);
+                }
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        });
         map.put(CommandType.SERVER_DIR, msg -> {
             ServerDirMessage message = (ServerDirMessage) msg;
             callbackClient.setServerPath(message.getCurrentDir());
@@ -65,9 +89,7 @@ public class ProcessorRegistry {
 //        map.put(CommandType.COPY_SERVER_DIR, msg -> {});
 //        map.put(CommandType.COPY_SERVER_FILE, msg -> {});
 //        map.put(CommandType.DELETE_SERVER_DIR, msg -> {});
-        map.put(CommandType.DELETE_SERVER_FILE, msg -> {
-            DeleteServerFileMessage message = (DeleteServerFileMessage) msg;
-        });
+//        map.put(CommandType.DELETE_SERVER_FILE, msg -> {});
 //        map.put(CommandType.SHARE_SERVER_DIR, msg -> {});
 //        map.put(CommandType.SHARE_SERVER_FILE, msg -> {});
         map.put(CommandType.NEW_USER, msg -> {
@@ -80,15 +102,12 @@ public class ProcessorRegistry {
                         Platform.runLater(() -> callbackRegister.emailBusy(message.getUserEmail()));
                 } else {
                 Platform.runLater(() -> callbackRegister.registerSuccess());
-                //todo скрыть форму регистрации, открыть форму логина (?->) с предзаполненым логином
             }
         });
         map.put(CommandType.LOGIN, msg -> {
             LoginMessage message = (LoginMessage) msg;
             if (message.isLoginSuccess()) {
                 Platform.runLater(() -> callbackLogin.loginAccept(message.getRootDir()));
-
-                //todo отправить пользовательскую дирректорию
             } else {
                 Platform.runLater(() -> callbackLogin.invalidLoginOrPassword());
             }
@@ -100,6 +119,10 @@ public class ProcessorRegistry {
         map.put(CommandType.ALERT_CREATE_SERVER_DIR, msg -> {
             CreateServerDirAlertMessage message = (CreateServerDirAlertMessage) msg;
             Platform.runLater(() -> callbackClient.processCreateServerDirAlert(message.getAlert()));
+        });
+        map.put(CommandType.ALERT_DELETE_SERVER_DIR, msg -> {
+            DeleteServerDirAlertMessage message = (DeleteServerDirAlertMessage) msg;
+            Platform.runLater(() -> callbackClient.processDeleteServerDirAlert(message.getAlert()));
         });
     }
 
